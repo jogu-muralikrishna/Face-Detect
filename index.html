@@ -5,8 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart Attendance System - Face Recognition</title>
   <link rel="stylesheet" href="/style.css" />
-  <!-- Pre-trained Face Recognition Library (face-api.js) -->
+  <!-- Pre-trained Face Recognition Library (face-api.js with fallback) -->
   <script src="/js/face-api.js"></script>
+  <script>
+    if (typeof faceapi === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js';
+      document.head.appendChild(s);
+    }
+  </script>
 </head>
 <body class="app-body">
 
