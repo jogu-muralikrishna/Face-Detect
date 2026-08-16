@@ -6,7 +6,11 @@ This module handles attendance marking, duplicate prevention, and report calcula
 """
 
 from datetime import datetime
-import database
+
+try:
+    import database
+except ImportError:
+    from python_project import database
 
 
 def mark_attendance(student_id):
@@ -27,18 +31,18 @@ def mark_attendance(student_id):
     existing = database.check_attendance_exists(student_id, today_date)
     if existing:
         return {
-            "success": False,
-            "already_marked": True,
+            "success": True,
+            "alreadyMarked": True,
             "message": f"Attendance already marked today for {student['name']} at {existing['time']}.",
             "student": dict(student),
         }
 
-    # Step 3: Record attendance in SQLite database
+    # Step 3: Record attendance in database
     database.record_attendance(student_id, today_date, current_time, status="Present")
 
     return {
         "success": True,
-        "already_marked": False,
+        "alreadyMarked": False,
         "message": f"Attendance marked successfully for {student['name']} (Roll: {student['roll_number']})!",
         "student": dict(student),
         "time": current_time,
@@ -51,23 +55,20 @@ def generate_attendance_reports():
     Calculates student-wise attendance statistics:
     Attendance Percentage = (Present / Total Classes) * 100
     """
-    conn = database.get_db_connection()
-    cursor = conn.cursor()
-
-    # Find total unique dates attendance was taken
-    cursor.execute("SELECT COUNT(DISTINCT date) as total_days FROM attendance")
-    total_days = cursor.fetchone()["total_days"]
+    total_days_row = database.execute_query("SELECT COUNT(DISTINCT date) as total_days FROM attendance", fetch="one")
+    total_days = total_days_row["total_days"] if total_days_row and "total_days" in total_days_row else 0
     total_classes = max(1, total_days)
 
     students = database.get_all_students()
     reports = []
 
     for s in students:
-        cursor.execute(
+        present_row = database.execute_query(
             "SELECT COUNT(*) as present_count FROM attendance WHERE student_id = ?",
-            (s["id"],)
+            (s["id"],),
+            fetch="one"
         )
-        present = cursor.fetchone()["present_count"]
+        present = present_row["present_count"] if present_row and "present_count" in present_row else 0
         absent = max(0, total_classes - present)
         percentage = round((present / total_classes) * 100, 1)
 
@@ -85,5 +86,4 @@ def generate_attendance_reports():
             "status": "Eligible (>=75%)" if percentage >= 75 else "Shortage (<75%)",
         })
 
-    conn.close()
     return reports
