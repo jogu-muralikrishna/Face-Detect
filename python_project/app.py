@@ -10,9 +10,18 @@ Compatible with PostgreSQL (for Vercel/Production) and SQLite (for Local).
 from flask import Flask, request, jsonify, redirect, url_for, session, Response, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import sys
 import json
 import secrets
 from datetime import datetime
+
+# Ensure python_project directory is on sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+if _current_dir not in sys.path:
+    sys.path.insert(0, _current_dir)
+_parent_dir = os.path.dirname(_current_dir)
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
 
 # Import helper modules
 import database
