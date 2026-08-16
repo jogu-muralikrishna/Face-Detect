@@ -8,30 +8,38 @@ Supports PostgreSQL (for permanent production on Vercel/Cloud) and SQLite
 
 import os
 import json
+import sqlite3
 from datetime import datetime
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
-IS_POSTGRES = bool(DATABASE_URL and (DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")))
+IS_POSTGRES = False
+psycopg2 = None
+RealDictCursor = None
 
-if IS_POSTGRES:
-    # Fix postgres:// URL prefix for psycopg2 if needed
+if DATABASE_URL and (DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")):
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
+    try:
+        import psycopg2 as _psycopg2
+        from psycopg2.extras import RealDictCursor as _RealDictCursor
+        psycopg2 = _psycopg2
+        RealDictCursor = _RealDictCursor
+        IS_POSTGRES = True
+    except ImportError:
+        print("[Database Warning] DATABASE_URL provided but psycopg2 not installed. Using SQLite.")
+        IS_POSTGRES = False
+
+# Path configuration for SQLite
+is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+if is_vercel:
+    DB_PATH = "/tmp/attendance.db"
 else:
-    import sqlite3
-    # Check if running in Vercel or read-only container
-    is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
-    if is_vercel:
-        DB_PATH = "/tmp/attendance.db"
-    else:
-        DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "attendance.db")
+    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "attendance.db")
 
 
 def get_db_connection():
     """Returns a PostgreSQL or SQLite connection with dict-like row access."""
-    if IS_POSTGRES:
+    if IS_POSTGRES and psycopg2 is not None:
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         conn.autocommit = True
         return conn
