@@ -170,11 +170,16 @@ function switchView(viewId) {
 let modelsLoadingPromise = null;
 
 async function ensureFaceApiModelsLoaded() {
-  if (modelsLoaded) return true;
+  if (modelsLoaded && typeof faceapi !== "undefined") return true;
   if (!modelsLoadingPromise) {
     modelsLoadingPromise = loadFaceApiModels();
   }
-  return await modelsLoadingPromise;
+  const success = await modelsLoadingPromise;
+  if (!success) {
+    // Clear promise to allow re-attempting
+    modelsLoadingPromise = null;
+  }
+  return success;
 }
 
 async function loadFaceApiModels() {
@@ -182,35 +187,67 @@ async function loadFaceApiModels() {
   const healthBadge = document.getElementById("healthModelBadge");
 
   try {
+    // Step 1: Ensure faceapi library is loaded
     if (typeof faceapi === "undefined") {
+      if (statusEl) statusEl.textContent = "Loading Face-API library...";
+      await new Promise((resolve) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.head.appendChild(script);
+      });
+    }
+
+    if (typeof faceapi === "undefined") {
+      console.warn("[Face Recognition] Face-API library unavailable.");
       if (statusEl) statusEl.textContent = "AI Model: Offline";
       return false;
     }
 
     if (statusEl) statusEl.textContent = "Loading Face AI Models...";
 
-    // Load models from /models directory
-    const MODEL_URL = "/models";
-    await Promise.all([
-      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-    ]);
+    // Step 2: Try local /models directory first, then CDN fallbacks
+    const candidateUrls = [
+      "/models",
+      "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model",
+      "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights"
+    ];
 
-    modelsLoaded = true;
-    if (statusEl) {
-      statusEl.textContent = "AI Models: Ready";
-      statusEl.style.backgroundColor = "var(--emerald-bg)";
-      statusEl.style.color = "var(--emerald)";
+    let isSuccess = false;
+    for (const url of candidateUrls) {
+      try {
+        console.log(`[Face Recognition] Attempting to load neural weights from: ${url}`);
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri(url),
+          faceapi.nets.tinyFaceDetector.loadFromUri(url),
+          faceapi.nets.faceLandmark68Net.loadFromUri(url),
+          faceapi.nets.faceLandmark68TinyNet.loadFromUri(url),
+          faceapi.nets.faceRecognitionNet.loadFromUri(url),
+        ]);
+        isSuccess = true;
+        console.log(`[Face Recognition] Neural network models successfully loaded from: ${url}`);
+        break;
+      } catch (loadErr) {
+        console.warn(`[Face Recognition] Failed loading weights from ${url}:`, loadErr);
+      }
     }
-    if (healthBadge) {
-      healthBadge.textContent = "LOADED";
-      healthBadge.className = "health-badge active";
+
+    if (isSuccess) {
+      modelsLoaded = true;
+      if (statusEl) {
+        statusEl.textContent = "AI Models: Ready";
+        statusEl.style.backgroundColor = "var(--emerald-bg)";
+        statusEl.style.color = "var(--emerald)";
+      }
+      if (healthBadge) {
+        healthBadge.textContent = "LOADED";
+        healthBadge.className = "health-badge active";
+      }
+      return true;
+    } else {
+      throw new Error("Unable to load model weights from any candidate source.");
     }
-    console.log("[Face Recognition] face-api.js neural network models loaded successfully.");
-    return true;
   } catch (err) {
     console.warn("[Face Recognition] Could not load face-api models:", err);
     if (statusEl) statusEl.textContent = "AI Model: Standby";
@@ -513,13 +550,17 @@ async function validateAndEncodeRegistrationFace(imageOrCanvas) {
   setRegValidationStatus("Analyzing face with AI neural network...", "info");
 
   try {
-    await ensureFaceApiModelsLoaded();
+    const isLoaded = await ensureFaceApiModelsLoaded();
 
-    if (!modelsLoaded || typeof faceapi === "undefined") {
-      setRegValidationStatus("Face recognition AI model is loading. Please wait 2 seconds and retake.", "invalid");
-      showToast("Face AI models are still initializing. Please try again in a moment.", "error");
-      regCapturedDescriptor = null;
-      return;
+    if (!isLoaded || !modelsLoaded || typeof faceapi === "undefined") {
+      // Automatic immediate retry
+      const retrySuccess = await loadFaceApiModels();
+      if (!retrySuccess && (!modelsLoaded || typeof faceapi === "undefined")) {
+        setRegValidationStatus("Face recognition AI model is loading. Please wait a moment and retake.", "invalid");
+        showToast("Face AI models are still initializing. Please try again in a few seconds.", "error");
+        regCapturedDescriptor = null;
+        return;
+      }
     }
 
     // Pass 1: SSD MobileNet V1
