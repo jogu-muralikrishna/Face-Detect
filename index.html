@@ -21,7 +21,7 @@
         </div>
         <div class="brand-text">
           <span class="brand-name">Smart Attendance</span>
-          <span class="brand-subtag">College Project &bull; Attendance Portal</span>
+          <span class="brand-subtag">Biometric Attendance System</span>
         </div>
       </div>
 
@@ -290,11 +290,11 @@
                 <div class="health-list">
                   <div class="health-row">
                     <span class="health-label">Database</span>
-                    <span class="health-badge active">Connected</span>
+                    <span class="health-badge active" id="healthDatabaseBadge">Connected</span>
                   </div>
                   <div class="health-row">
                     <span class="health-label">Face Recognition AI</span>
-                    <span class="health-badge active" id="healthModelBadge">LOADED</span>
+                    <span class="health-badge active" id="healthModelBadge">READY</span>
                   </div>
                   <div class="health-row">
                     <span class="health-label">Camera Status</span>
@@ -322,7 +322,7 @@
           <div class="section-header">
             <div>
               <h2 class="section-title">Registered Students</h2>
-              <p class="section-subtitle">Manage enrolled student profiles and face biometric records</p>
+              <p class="section-subtitle">Manage enrolled student profiles and their stored 128-d face encodings</p>
             </div>
             <div class="toolbar">
               <span class="status-badge good" id="studentsCountBadge">0 Students</span>
@@ -366,7 +366,7 @@
           <div class="section-header">
             <div>
               <h2 class="section-title">Student Registration (Camera 1)</h2>
-              <p class="section-subtitle">Dedicated camera for capturing and enrolling student faces</p>
+              <p class="section-subtitle">Dedicated camera for capturing student photo and registering biometric profile</p>
             </div>
           </div>
 
@@ -586,7 +586,7 @@
               <div class="table-header-box">
                 <div>
                   <h3 class="table-title">Recent Marked Attendance</h3>
-                  <p class="table-subtitle">Automatically logged in attendance system</p>
+                  <p class="table-subtitle">Verified attendance log</p>
                 </div>
                 <span class="status-badge present">Live Updates</span>
               </div>
@@ -737,7 +737,7 @@
           <div class="section-header">
             <div>
               <h2 class="section-title">Faculty Portal &amp; Authentication</h2>
-              <p class="section-subtitle">Faculty sign in &amp; new account registration</p>
+              <p class="section-subtitle">Faculty sign in &amp; account registration</p>
             </div>
           </div>
 
@@ -838,7 +838,7 @@
               </svg>
             </div>
             <h2 class="section-title" style="font-size: 22px; margin-bottom: 6px;">ADMIN PORTAL</h2>
-            <p class="section-subtitle" style="margin-bottom: 24px;">Enter the Master Admin Password to access administrative controls.</p>
+            <p class="section-subtitle" style="margin-bottom: 24px;">Enter the Master Admin Password to manage faculty, students, and attendance records.</p>
 
             <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
               <div class="form-group" style="text-align: left; margin-bottom: 16px;">
@@ -852,7 +852,7 @@
             </form>
 
             <div style="margin-top: 20px; font-size: 12px; color: var(--text-light);">
-              <span>Protected Administrative Portal</span>
+              <span>Protected Area &bull; Authorized Administrator Access Only</span>
             </div>
           </div>
 
@@ -871,7 +871,7 @@
                     <h2 class="section-title" style="margin: 0;">ADMIN PORTAL</h2>
                     <span class="admin-badge">Master Administrator</span>
                   </div>
-                  <p class="section-subtitle" style="margin: 0; margin-top: 2px;">System Management &bull; Database Administration &bull; Data Exports</p>
+                  <p class="section-subtitle" style="margin: 0; margin-top: 2px;">System Management &bull; Central Database &bull; Data Exports</p>
                 </div>
               </div>
 
@@ -926,13 +926,13 @@
                 <div class="metric-card">
                   <p class="metric-label">Total Faculty</p>
                   <h3 class="metric-value text-blue" id="adminTotalFaculty">0</h3>
-                  <div class="metric-footer">Registered Faculty Members</div>
+                  <div class="metric-footer">Authorized Instructors</div>
                 </div>
 
                 <div class="metric-card">
                   <p class="metric-label">Total Students</p>
                   <h3 class="metric-value text-blue" id="adminTotalStudents">0</h3>
-                  <div class="metric-footer">Enrolled Student Profiles</div>
+                  <div class="metric-footer">Registered Biometric Profiles</div>
                 </div>
 
                 <div class="metric-card">
@@ -950,7 +950,7 @@
                 <div class="metric-card">
                   <p class="metric-label">Total Attendance Records</p>
                   <h3 class="metric-value" style="color: #6366f1;" id="adminTotalAttendance">0</h3>
-                  <div class="metric-footer">Total Attendance Logs</div>
+                  <div class="metric-footer">Verified Attendance Logs</div>
                 </div>
               </div>
 
@@ -958,23 +958,23 @@
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
                 <div class="form-card">
                   <h3 class="table-title" style="margin-bottom: 6px;">Database Backup (.db)</h3>
-                  <p class="table-subtitle" style="margin-bottom: 16px;">Create a timestamped database backup copy or download database file directly.</p>
+                  <p class="table-subtitle" style="margin-bottom: 16px;">Create a timestamped database copy in the backups/ folder or download attendance.db directly.</p>
                   <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                     <button class="btn btn-primary" onclick="handleCreateDatabaseBackup()">
                       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                       </svg>
-                      <span>Create Backup</span>
+                      <span>Create .db Backup</span>
                     </button>
                     <button class="btn btn-secondary" onclick="handleDownloadDbFile()">
-                      <span>Download Database File</span>
+                      <span>Download attendance.db</span>
                     </button>
                   </div>
                 </div>
 
                 <div class="form-card">
                   <h3 class="table-title" style="margin-bottom: 6px;">JSON Data Export</h3>
-                  <p class="table-subtitle" style="margin-bottom: 16px;">Export database records as standard JSON (Passwords &amp; credentials stripped for privacy).</p>
+                  <p class="table-subtitle" style="margin-bottom: 16px;">Export clean database records as standard JSON (Passwords &amp; biometrics stripped for privacy).</p>
                   <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                     <button class="btn btn-secondary" onclick="downloadAdminJsonExport()">
                       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
@@ -1113,8 +1113,8 @@
                     </svg>
                   </div>
                   <div>
-                    <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary);" id="adminDatabaseTitle">Central Database Status</h4>
-                    <p style="font-size: 13px; color: var(--text-muted);" id="adminDatabaseStatusDesc">Primary authoritative storage &bull; Operational</p>
+                    <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary);" id="adminDatabaseTitle">Central Database: PostgreSQL / SQLite</h4>
+                    <p style="font-size: 13px; color: var(--text-muted);" id="adminDatabaseStatusDesc">Primary authoritative storage &bull; Zero External Dependencies</p>
                   </div>
                 </div>
 
@@ -1123,10 +1123,10 @@
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                     </svg>
-                    <span>Backup Database</span>
+                    <span>Backup Database (.db)</span>
                   </button>
                   <button class="btn btn-secondary" onclick="handleDownloadDbFile()">
-                    <span>Download Database File</span>
+                    <span>Download attendance.db</span>
                   </button>
                 </div>
               </div>
@@ -1136,7 +1136,7 @@
                 <div class="table-header-box">
                   <div>
                     <h3 class="table-title">Sanitized JSON Database Snapshot &amp; Export</h3>
-                    <p class="table-subtitle">Safe export format compliant with data privacy (No passwords, hashes, or credentials)</p>
+                    <p class="table-subtitle">Safe export format compliant with data privacy (No passwords, hashes, or raw biometric vectors)</p>
                   </div>
                   <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button class="btn btn-secondary btn-sm" onclick="loadAndDisplayAdminJson()">
@@ -1150,12 +1150,12 @@
 
                 <div class="json-viewer-container">
                   <div class="json-viewer-header">
-                    <span>Sanitized Database Export Preview</span>
+                    <span>OUTPUT: smart_attendance_backup.json</span>
                     <button class="btn-sm" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 4px; padding: 2px 8px; cursor: pointer;" onclick="copyJsonToClipboard()">
                       Copy JSON
                     </button>
                   </div>
-                  <pre class="json-viewer-code" id="adminJsonPreviewCode">Click "Refresh JSON Preview" to view database snapshot...</pre>
+                  <pre class="json-viewer-code" id="adminJsonPreviewCode">Click "Refresh JSON Preview" to view sanitized database schema...</pre>
                 </div>
               </div>
             </div>
@@ -1315,7 +1315,7 @@
         <div style="background-color: var(--bg-canvas); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-default); font-size: 13px; line-height: 1.6;">
           <div><strong>Year &amp; Section:</strong> <span id="viewStudentYearSection">-</span></div>
           <div><strong>Enrollment Date:</strong> <span id="viewStudentCreated">-</span></div>
-          <div><strong>Biometric Status:</strong> <span class="status-badge good" style="margin-left: 4px;">Biometric Enrolled</span></div>
+          <div><strong>Biometric Status:</strong> <span class="status-badge good" style="margin-left: 4px;">Face Enrolled</span></div>
         </div>
       </div>
       <div class="modal-footer">
