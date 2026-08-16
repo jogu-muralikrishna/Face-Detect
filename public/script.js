@@ -615,7 +615,7 @@ async function handleStudentRegisterSubmit(e) {
   const submitBtn = document.getElementById("regSubmitBtn");
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = "Saving student profile...";
+    submitBtn.textContent = "Saving Student...";
   }
 
   try {
@@ -1413,7 +1413,14 @@ async function fetchDashboardData() {
     const res = await fetch("/api/stats");
     const data = await res.json();
 
+    const dbBadge = document.getElementById("healthDatabaseBadge");
+
     if (data.success) {
+      if (dbBadge) {
+        dbBadge.className = "health-badge active";
+        dbBadge.textContent = "Connected";
+      }
+
       document.getElementById("statTotalStudents").textContent = data.totalStudents || 0;
       document.getElementById("statTotalFaculty").textContent = data.totalFaculty || 0;
       document.getElementById("statPresentToday").textContent = data.presentToday || 0;
@@ -1432,12 +1439,23 @@ async function fetchDashboardData() {
 
       if (presentBar) presentBar.style.width = `${presentPct}%`;
       if (absentBar) absentBar.style.width = `${absentPct}%`;
+    } else {
+      if (dbBadge) {
+        dbBadge.className = "health-badge error";
+        dbBadge.textContent = "Error";
+      }
+      showToast(data.error || "Unable to load database metrics.", "error");
     }
 
     // Fetch today's present and absent tables
     fetchTodayAttendanceList();
   } catch (err) {
     console.error("Error fetching dashboard data:", err);
+    const dbBadge = document.getElementById("healthDatabaseBadge");
+    if (dbBadge) {
+      dbBadge.className = "health-badge error";
+      dbBadge.textContent = "Offline";
+    }
   }
 }
 
@@ -1757,7 +1775,7 @@ async function resetTodayAttendance() {
 }
 
 async function confirmClearAllData() {
-  const confirmed = confirm("WARNING: This will completely wipe all students, attendance records, and faculty accounts in the database.\n\nDo you want to proceed?");
+  const confirmed = confirm("WARNING: This will completely reset all students, attendance records, and faculty accounts.\n\nDo you want to proceed?");
   if (!confirmed) return;
 
   try {
@@ -2449,7 +2467,7 @@ async function handleCreateDatabaseBackup() {
   const backupBtn = document.getElementById("adminBackupDbBtn");
   if (backupBtn) {
     backupBtn.disabled = true;
-    backupBtn.innerHTML = `<span>Creating Backup...</span>`;
+    backupBtn.innerHTML = `<span>Creating .db Backup...</span>`;
   }
 
   try {
@@ -2474,7 +2492,7 @@ async function handleCreateDatabaseBackup() {
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
         </svg>
-        <span>Backup Database</span>
+        <span>Backup Database (.db)</span>
       `;
     }
   }
