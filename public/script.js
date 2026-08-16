@@ -615,7 +615,7 @@ async function handleStudentRegisterSubmit(e) {
   const submitBtn = document.getElementById("regSubmitBtn");
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = "Saving to SQLite...";
+    submitBtn.textContent = "Saving student profile...";
   }
 
   try {
@@ -1757,7 +1757,7 @@ async function resetTodayAttendance() {
 }
 
 async function confirmClearAllData() {
-  const confirmed = confirm("WARNING: This will completely wipe all students, attendance records, and faculty accounts in SQLite.\n\nDo you want to proceed?");
+  const confirmed = confirm("WARNING: This will completely wipe all students, attendance records, and faculty accounts in the database.\n\nDo you want to proceed?");
   if (!confirmed) return;
 
   try {
@@ -2449,7 +2449,7 @@ async function handleCreateDatabaseBackup() {
   const backupBtn = document.getElementById("adminBackupDbBtn");
   if (backupBtn) {
     backupBtn.disabled = true;
-    backupBtn.innerHTML = `<span>Creating .db Backup...</span>`;
+    backupBtn.innerHTML = `<span>Creating Backup...</span>`;
   }
 
   try {
@@ -2474,7 +2474,7 @@ async function handleCreateDatabaseBackup() {
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
         </svg>
-        <span>Backup Database (.db)</span>
+        <span>Backup Database</span>
       `;
     }
   }
