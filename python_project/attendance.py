@@ -3,14 +3,11 @@
 Attendance Logic Module
 =============================================================================
 This module handles attendance marking, duplicate prevention, and report calculations.
+Compatible with PostgreSQL (for Vercel/Cloud) and SQLite (for Local).
 """
 
 from datetime import datetime
-
-try:
-    import database
-except ImportError:
-    from python_project import database
+import database
 
 
 def mark_attendance(student_id):
@@ -31,8 +28,8 @@ def mark_attendance(student_id):
     existing = database.check_attendance_exists(student_id, today_date)
     if existing:
         return {
-            "success": True,
-            "alreadyMarked": True,
+            "success": False,
+            "already_marked": True,
             "message": f"Attendance already marked today for {student['name']} at {existing['time']}.",
             "student": dict(student),
         }
@@ -42,7 +39,7 @@ def mark_attendance(student_id):
 
     return {
         "success": True,
-        "alreadyMarked": False,
+        "already_marked": False,
         "message": f"Attendance marked successfully for {student['name']} (Roll: {student['roll_number']})!",
         "student": dict(student),
         "time": current_time,
@@ -55,22 +52,22 @@ def generate_attendance_reports():
     Calculates student-wise attendance statistics:
     Attendance Percentage = (Present / Total Classes) * 100
     """
-    total_days_row = database.execute_query("SELECT COUNT(DISTINCT date) as total_days FROM attendance", fetch="one")
-    total_days = total_days_row["total_days"] if total_days_row and "total_days" in total_days_row else 0
+    row = database.execute_query("SELECT COUNT(DISTINCT date) as total_days FROM attendance", fetch="one")
+    total_days = row["total_days"] if row and row.get("total_days") else 0
     total_classes = max(1, total_days)
 
     students = database.get_all_students()
     reports = []
 
     for s in students:
-        present_row = database.execute_query(
+        p_row = database.execute_query(
             "SELECT COUNT(*) as present_count FROM attendance WHERE student_id = ?",
             (s["id"],),
             fetch="one"
         )
-        present = present_row["present_count"] if present_row and "present_count" in present_row else 0
+        present = p_row["present_count"] if p_row and p_row.get("present_count") else 0
         absent = max(0, total_classes - present)
-        percentage = round((present / total_classes) * 100, 1)
+        percentage = round((present / total_classes) * 100, 1) if total_classes > 0 else 0
 
         reports.append({
             "id": s["id"],
@@ -79,11 +76,14 @@ def generate_attendance_reports():
             "department": s["department"],
             "year": s["year"],
             "section": s["section"],
-            "total_classes": total_classes,
+            "totalClasses": total_classes,
             "present": present,
             "absent": absent,
             "percentage": percentage,
-            "status": "Eligible (>=75%)" if percentage >= 75 else "Shortage (<75%)",
+            "statusBadge": "Eligible (>=75%)" if percentage >= 75 else "Shortage (<75%)",
         })
 
-    return reports
+    return {
+        "totalClassesConducted": total_days,
+        "reports": reports
+    }
