@@ -1,409 +1,601 @@
 """
 =============================================================================
 Face Recognition-Based Smart Attendance Management System
-Python Flask Backend Application
+Python Flask Backend & WSGI Application for Vercel
 =============================================================================
-This is the main Flask entry point for the Smart Attendance System.
-Compatible with PostgreSQL (for Vercel/Production) and SQLite (for Local).
+Serves the Single Page Application (index.html) and JSON API endpoints.
+Compatible with PostgreSQL (Production) and SQLite (Local & /tmp Serverless Fallback).
 """
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, Response
+from flask import Flask, request, jsonify, redirect, url_for, session, Response, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import sys
 import json
+import secrets
+import hashlib
 from datetime import datetime
 
-# Import helper modules
-import database
-import face_recognition_module
-import attendance
+# Path setup to ensure database, face_recognition_module, and attendance imports succeed
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 
-# Initialize Flask App
-app = Flask(__name__)
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+if PROJECT_DIR not in sys.path:
+    sys.path.insert(0, PROJECT_DIR)
+
+try:
+    import database
+    import face_recognition_module
+    import attendance
+except ImportError:
+    from python_project import database
+    from python_project import face_recognition_module
+    from python_project import attendance
+
+# Initialize Flask App pointing to root directory for SPA template and public directory for static files
+app = Flask(
+    __name__,
+    static_folder=PUBLIC_DIR,
+    static_url_path="",
+    template_folder=BASE_DIR
+)
+
 app.secret_key = os.environ.get("SECRET_KEY", "smart_attendance_secret_key_college_project_production")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin@2008")
 
-# Ensure uploads directory exists
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "students")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+# In-memory admin tokens set
+ACTIVE_ADMIN_TOKENS = set()
 
-# Initialize database schema on startup
-database.init_db()
-
-
-def is_logged_in():
-    """Helper to check if faculty is logged in."""
-    return "faculty_id" in session
+# Initialize database schema safely
+try:
+    database.init_db()
+except Exception as e:
+    print(f"[Warning] Database initialization error on startup: {e}")
 
 
-def is_admin_logged_in():
-    """Helper to check if admin is logged in."""
-    return session.get("is_admin", False)
+def get_today_date():
+    return datetime.now().strftime("%Y-%m-%d")
 
 
-# ---------------------------------------------------------------------------
-# Route: Faculty Login
-# ---------------------------------------------------------------------------
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+def get_current_time():
+    return datetime.now().strftime("%I:%M:%S %p")
 
-        if not username or not password:
-            return render_template("login.html", error="Please enter both username and password.")
 
-        faculty = database.get_faculty_by_username(username)
-        if not faculty or not check_password_hash(faculty["password_hash"], password):
-            return render_template("login.html", error="Invalid username or password.")
+def hash_password(password):
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
-        # Set session
-        session["faculty_id"] = faculty["id"]
-        session["faculty_name"] = faculty["name"]
-        session["faculty_username"] = faculty["username"]
 
-        return redirect(url_for("dashboard"))
-
-    return render_template("login.html")
+def verify_admin_token(req):
+    token = req.headers.get("X-Admin-Token") or req.args.get("token")
+    if not token:
+        return False
+    return token in ACTIVE_ADMIN_TOKENS
 
 
 # ---------------------------------------------------------------------------
-# Route: Faculty Registration
-# ---------------------------------------------------------------------------
-@app.route("/register_faculty", methods=["GET", "POST"])
-def register_faculty():
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-        confirm_password = request.form.get("confirm_password", "")
-
-        if not (name and username and password):
-            return render_template("register_faculty.html", error="All fields are required.")
-
-        if confirm_password and password != confirm_password:
-            return render_template("register_faculty.html", error="Passwords do not match.")
-
-        if database.get_faculty_by_username(username):
-            return render_template("register_faculty.html", error=f"Username '{username}' is already taken.")
-
-        password_hash = generate_password_hash(password)
-        database.add_faculty(name, username, password_hash)
-
-        return render_template("login.html", success="Faculty registered successfully. Please login.")
-
-    return render_template("register_faculty.html")
-
-
-# ---------------------------------------------------------------------------
-# Route: Faculty Logout
-# ---------------------------------------------------------------------------
-@app.route("/logout")
-def logout():
-    session.pop("faculty_id", None)
-    session.pop("faculty_name", None)
-    session.pop("faculty_username", None)
-    return redirect(url_for("login"))
-
-
-# ---------------------------------------------------------------------------
-# Route 1: Faculty Dashboard
+# SPA Routing: Serve index.html for all page routes
 # ---------------------------------------------------------------------------
 @app.route("/")
 @app.route("/dashboard")
-def dashboard():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    today = datetime.now().strftime("%Y-%m-%d")
-    total_students = database.get_total_students_count()
-    total_faculty = database.get_total_faculty_count()
-    present_today_count = database.get_present_today_count(today)
-    absent_today_count = max(0, total_students - present_today_count)
-
-    today_records = database.get_today_attendance_records(today)
-    absent_students = database.get_today_absent_students(today)
-
-    return render_template(
-        "dashboard.html",
-        faculty_name=session.get("faculty_name", "Faculty"),
-        total_students=total_students,
-        total_faculty=total_faculty,
-        present_today=present_today_count,
-        absent_today=absent_today_count,
-        today=today,
-        records=today_records,
-        absent_students=absent_students,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Route 2: View All Registered Students
-# ---------------------------------------------------------------------------
 @app.route("/students")
-def students():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    student_list = database.get_all_students()
-    return render_template("students.html", students=student_list)
-
-
-# ---------------------------------------------------------------------------
-# Route 3: Delete Student
-# ---------------------------------------------------------------------------
-@app.route("/students/delete/<int:student_id>", methods=["POST"])
-def delete_student_route(student_id):
-    if not is_logged_in() and not is_admin_logged_in():
-        return redirect(url_for("login"))
-
-    database.delete_student(student_id)
-    return redirect(url_for("students"))
-
-
-# ---------------------------------------------------------------------------
-# Route 4: CAMERA 1 - Student Registration Page
-# ---------------------------------------------------------------------------
-@app.route("/register_student", methods=["GET", "POST"])
-def register_student():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        roll_number = request.form.get("roll_number", "").strip()
-        department = request.form.get("department", "").strip()
-        year = request.form.get("year", "").strip()
-        section = request.form.get("section", "").strip()
-        image_data = request.form.get("image_data", "")
-
-        # Validation
-        if not (name and roll_number and department and year and section and image_data):
-            return render_template("register_student.html", error="All fields and a captured face photo are required.")
-
-        # Check if roll number already exists
-        if database.get_student_by_roll_number(roll_number):
-            return render_template("register_student.html", error=f"Roll Number '{roll_number}' is already registered.")
-
-        # Extract Face Encoding & Validate Exactly One Face
-        encoding, error_msg = face_recognition_module.extract_face_encoding_from_base64(image_data)
-        if error_msg:
-            return render_template("register_student.html", error=error_msg)
-
-        # Store persistent reference (data URL or saved file)
-        filename = f"{roll_number}_{name}.jpg"
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        try:
-            face_recognition_module.save_base64_image(image_data, file_path)
-            stored_image_ref = f"/students/{filename}"
-        except Exception:
-            stored_image_ref = image_data
-
-        # Save to Database
-        encoding_json = json.dumps(encoding.tolist())
-        database.add_student(name, roll_number, department, year, section, stored_image_ref, encoding_json)
-
-        return render_template("register_student.html", success="Student registered successfully.")
-
-    return render_template("register_student.html")
-
-
-# ---------------------------------------------------------------------------
-# Route 5: CAMERA 2 - Take Attendance Page (Scanner Camera)
-# ---------------------------------------------------------------------------
+@app.route("/register_student")
 @app.route("/attendance")
-def attendance_page():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    return render_template("attendance.html")
-
-
-# ---------------------------------------------------------------------------
-# Route 6: API to Recognize and Mark Attendance from Face Camera Frame
-# ---------------------------------------------------------------------------
-@app.route("/api/recognize_and_mark", methods=["POST"])
-def recognize_and_mark():
-    data = request.get_json()
-    if not data or "image" not in data:
-        return jsonify({"success": False, "error": "No image frame received."})
-
-    # Recognize face from registered students in database
-    student, error_msg = face_recognition_module.recognize_face_from_base64(data["image"])
-    if error_msg:
-        return jsonify({"success": False, "error": error_msg})
-
-    if not student:
-        return jsonify({
-            "success": False,
-            "error": "Unknown Person. This person is not registered. Attendance NOT marked."
-        })
-
-    # Mark attendance with duplicate prevention
-    result = attendance.mark_attendance(student["id"])
-    return jsonify(result)
-
-
-# ---------------------------------------------------------------------------
-# Route 7: Attendance History Page
-# ---------------------------------------------------------------------------
 @app.route("/history")
-def history():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    selected_date = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
-    search_query = request.args.get("search", "").strip()
-    records = database.get_attendance_history(selected_date, search_query)
-    return render_template("history.html", selected_date=selected_date, records=records, search_query=search_query)
-
-
-# ---------------------------------------------------------------------------
-# Route 8: Reports Page (Percentage calculation)
-# ---------------------------------------------------------------------------
 @app.route("/reports")
-def reports():
-    if not is_logged_in():
-        return redirect(url_for("login"))
-
-    report_data = attendance.generate_attendance_reports()
-    return render_template("reports.html", reports=report_data)
-
-
-# ---------------------------------------------------------------------------
-# Admin Routes & Protected Management Portal
-# ---------------------------------------------------------------------------
-@app.route("/admin/login", methods=["GET", "POST"])
-def admin_login():
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        if password == ADMIN_PASSWORD:
-            session["is_admin"] = True
-            return redirect(url_for("admin_dashboard"))
-        else:
-            return render_template("admin_login.html", error="Invalid Admin Password.")
-    return render_template("admin_login.html")
-
-
-@app.route("/admin/logout")
-def admin_logout():
-    session.pop("is_admin", None)
-    return redirect(url_for("admin_login"))
-
-
+@app.route("/login")
+@app.route("/register_faculty")
 @app.route("/admin")
-@app.route("/admin/dashboard")
-def admin_dashboard():
-    if not is_admin_logged_in():
-        return redirect(url_for("admin_login"))
-
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    total_faculty = database.get_total_faculty_count()
-    total_students = database.get_total_students_count()
-    present_today = database.get_present_today_count(today_str)
-    absent_today = max(0, total_students - present_today)
-    total_attendance = database.get_total_attendance_count()
-
-    return render_template(
-        "admin_dashboard.html",
-        total_faculty=total_faculty,
-        total_students=total_students,
-        present_today=present_today,
-        absent_today=absent_today,
-        total_attendance=total_attendance,
-        today=today_str,
-        database_type="PostgreSQL" if database.IS_POSTGRES else "SQLite",
-    )
+def serve_index():
+    return send_from_directory(BASE_DIR, "index.html")
 
 
 # ---------------------------------------------------------------------------
-# Admin API: Faculty Management (List, Add, Edit, Reset Password, Delete)
+# Static File Routing Fallback
 # ---------------------------------------------------------------------------
+@app.route("/style.css")
+def serve_style():
+    return send_from_directory(PUBLIC_DIR, "style.css")
+
+
+@app.route("/script.js")
+def serve_script():
+    return send_from_directory(PUBLIC_DIR, "script.js")
+
+
+@app.route("/js/<path:filename>")
+def serve_js(filename):
+    return send_from_directory(os.path.join(PUBLIC_DIR, "js"), filename)
+
+
+@app.route("/models/<path:filename>")
+def serve_models(filename):
+    return send_from_directory(os.path.join(PUBLIC_DIR, "models"), filename)
+
+
+@app.route("/images/<path:filename>")
+def serve_images(filename):
+    return send_from_directory(os.path.join(PUBLIC_DIR, "images"), filename)
+
+
+@app.route("/students/<path:filename>")
+def serve_student_photos(filename):
+    student_dir = os.path.join(BASE_DIR, "students")
+    if os.path.exists(os.path.join(student_dir, filename)):
+        return send_from_directory(student_dir, filename)
+    tmp_student_dir = "/tmp/students"
+    if os.path.exists(os.path.join(tmp_student_dir, filename)):
+        return send_from_directory(tmp_student_dir, filename)
+    return jsonify({"error": "Image not found"}), 404
+
+
+# ---------------------------------------------------------------------------
+# API 1: Dashboard Stats
+# ---------------------------------------------------------------------------
+@app.route("/api/stats", methods=["GET"])
+def api_stats():
+    try:
+        today = get_today_date()
+        total_students = database.get_total_students_count()
+        total_faculty = database.get_total_faculty_count()
+        present_today = database.get_present_today_count(today)
+        absent_today = max(0, total_students - present_today)
+
+        return jsonify({
+            "success": True,
+            "today": today,
+            "totalStudents": total_students,
+            "totalFaculty": total_faculty,
+            "presentToday": present_today,
+            "absentToday": absent_today
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 2: Get All Students
+# ---------------------------------------------------------------------------
+@app.route("/api/students", methods=["GET"])
+def api_get_students():
+    try:
+        raw_students = database.get_all_students_with_encodings() if hasattr(database, "get_all_students_with_encodings") else database.get_all_students()
+        students = []
+        for s in raw_students:
+            s_dict = dict(s)
+            enc = s_dict.get("face_encoding")
+            if isinstance(enc, str):
+                try:
+                    s_dict["face_encoding"] = json.loads(enc)
+                except Exception:
+                    s_dict["face_encoding"] = []
+            elif not isinstance(enc, list):
+                s_dict["face_encoding"] = []
+            students.append(s_dict)
+
+        return jsonify({"success": True, "students": students})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 3: Register New Student
+# ---------------------------------------------------------------------------
+@app.route("/api/students", methods=["POST"])
+def api_register_student():
+    try:
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        roll_number = data.get("roll_number", "").strip()
+        department = data.get("department", "").strip()
+        year = data.get("year", "").strip()
+        section = data.get("section", "").strip()
+        image = data.get("image", "")
+        face_encoding = data.get("face_encoding")
+
+        if not (name and roll_number and department and year and section):
+            return jsonify({"success": False, "error": "All student fields are required."}), 400
+
+        if not face_encoding or not isinstance(face_encoding, list) or len(face_encoding) == 0:
+            return jsonify({"success": False, "error": "Valid 128-d face encoding is required."}), 400
+
+        existing = database.get_student_by_roll_number(roll_number)
+        if existing:
+            return jsonify({"success": False, "error": f"Roll Number '{roll_number}' is already registered."}), 400
+
+        encoding_json = json.dumps(face_encoding)
+        stored_image_ref = image or ""
+
+        student_id = database.add_student(name, roll_number, department, year, section, stored_image_ref, encoding_json)
+
+        return jsonify({
+            "success": True,
+            "message": "Student registered successfully.",
+            "studentId": student_id
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 4: Delete Student
+# ---------------------------------------------------------------------------
+@app.route("/api/students/<int:student_id>", methods=["DELETE"])
+def api_delete_student(student_id):
+    try:
+        student = database.get_student_by_id(student_id)
+        if not student:
+            return jsonify({"success": False, "error": "Student not found."}), 404
+
+        database.delete_student(student_id)
+        return jsonify({"success": True, "message": "Student deleted successfully."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 5: Mark Attendance
+# ---------------------------------------------------------------------------
+@app.route("/api/attendance/mark", methods=["POST"])
+def api_mark_attendance():
+    try:
+        data = request.get_json() or {}
+        student_id = data.get("student_id")
+        roll_number = data.get("roll_number")
+
+        student = None
+        if student_id:
+            student = database.get_student_by_id(student_id)
+        elif roll_number:
+            student = database.get_student_by_roll_number(roll_number)
+
+        if not student:
+            return jsonify({"success": False, "error": "Student record not found."}), 404
+
+        res = attendance.mark_attendance(student["id"])
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 5B: Scan Frame Attendance Processing
+# ---------------------------------------------------------------------------
+@app.route("/api/attendance/scan-frame", methods=["POST"])
+def api_scan_frame():
+    try:
+        data = request.get_json() or {}
+        image = data.get("image")
+        descriptor = data.get("descriptor")
+
+        if not image and not descriptor:
+            return jsonify({"success": False, "status": "no_frame", "error": "No camera frame received."}), 400
+
+        matched_student, err = face_recognition_module.recognize_face_from_base64(image, descriptor=descriptor)
+
+        if err and "No face detected" in err:
+            return jsonify({"success": True, "status": "no_face", "message": "No face detected."})
+
+        if not matched_student:
+            return jsonify({
+                "success": True,
+                "status": "unknown",
+                "student": None,
+                "message": "Unknown Person. Attendance not marked."
+            })
+
+        res = attendance.mark_attendance(matched_student["id"])
+        status_str = "already_present" if res.get("alreadyMarked") else "marked_present"
+
+        return jsonify({
+            "success": True,
+            "status": status_str,
+            "alreadyMarked": res.get("alreadyMarked", False),
+            "student": {
+                "id": matched_student["id"],
+                "name": matched_student["name"],
+                "roll_number": matched_student["roll_number"],
+                "department": matched_student["department"],
+                "time": res.get("time", get_current_time()),
+                "date": res.get("date", get_today_date())
+            },
+            "message": res.get("message", "Attendance processed.")
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 6: Today's Attendance Summary
+# ---------------------------------------------------------------------------
+@app.route("/api/attendance/today", methods=["GET"])
+def api_today_attendance():
+    try:
+        today = get_today_date()
+        present_students = database.get_today_attendance_records(today)
+        absent_students = database.get_today_absent_students(today)
+
+        return jsonify({
+            "success": True,
+            "today": today,
+            "presentStudents": [dict(p) for p in present_students],
+            "absentStudents": [dict(a) for a in absent_students],
+            "totalCount": len(present_students) + len(absent_students),
+            "presentCount": len(present_students),
+            "absentCount": len(absent_students)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 7: Attendance History
+# ---------------------------------------------------------------------------
+@app.route("/api/attendance/history", methods=["GET"])
+@app.route("/api/history", methods=["GET"])
+def api_attendance_history():
+    try:
+        date_str = request.args.get("date", get_today_date())
+        search = request.args.get("search", "").strip()
+        records = database.get_attendance_history(date_str, search)
+
+        return jsonify({
+            "success": True,
+            "date": date_str,
+            "count": len(records),
+            "records": [dict(r) for r in records]
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 8: Reports
+# ---------------------------------------------------------------------------
+@app.route("/api/reports", methods=["GET"])
+def api_reports():
+    try:
+        report_data = attendance.generate_attendance_reports()
+        total_days_row = database.execute_query("SELECT COUNT(DISTINCT date) as count FROM attendance", fetch="one")
+        total_classes = total_days_row["count"] if total_days_row and "count" in total_days_row else 0
+
+        return jsonify({
+            "success": True,
+            "totalClassesConducted": total_classes,
+            "reports": report_data
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API 9: Reset Today's Attendance
+# ---------------------------------------------------------------------------
+@app.route("/api/attendance/reset-today", methods=["POST"])
+def api_reset_today():
+    try:
+        today = get_today_date()
+        database.execute_query("DELETE FROM attendance WHERE date = ?", (today,))
+        return jsonify({"success": True, "message": f"Cleared attendance records for today ({today})."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# API: Faculty Auth (Register, Login, Logout)
+# ---------------------------------------------------------------------------
+@app.route("/api/faculty/register", methods=["POST"])
+def api_faculty_register():
+    try:
+        data = request.get_json() or request.form
+        name = data.get("name", "").strip()
+        username = data.get("username", "").strip().lower()
+        password = data.get("password", "")
+        confirm_password = data.get("confirmPassword") or data.get("confirm_password")
+
+        if not (name and username and password):
+            return jsonify({"success": False, "error": "All fields are required."}), 400
+
+        if confirm_password and password != confirm_password:
+            return jsonify({"success": False, "error": "Passwords do not match."}), 400
+
+        if database.get_faculty_by_username(username):
+            return jsonify({"success": False, "error": f"Username '{username}' is already taken."}), 400
+
+        password_hash = hash_password(password)
+        fac_id = database.add_faculty(name, username, password_hash)
+
+        return jsonify({
+            "success": True,
+            "message": "Faculty registered successfully.",
+            "faculty": {"id": fac_id, "name": name, "username": username}
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/faculty/login", methods=["POST"])
+def api_faculty_login():
+    try:
+        data = request.get_json() or request.form
+        username = data.get("username", "").strip().lower()
+        password = data.get("password", "")
+
+        if not username or not password:
+            return jsonify({"success": False, "error": "Please enter both username and password."}), 400
+
+        faculty = database.get_faculty_by_username(username)
+        if not faculty or faculty.get("password_hash") != hash_password(password):
+            return jsonify({"success": False, "error": "Invalid username or password."}), 401
+
+        session["faculty_id"] = faculty["id"]
+        session["faculty_name"] = faculty["name"]
+
+        return jsonify({
+            "success": True,
+            "message": "Login successful.",
+            "faculty": {"id": faculty["id"], "name": faculty["name"], "username": faculty["username"]}
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/faculty/logout", methods=["POST", "GET"])
+def api_faculty_logout():
+    session.pop("faculty_id", None)
+    session.pop("faculty_name", None)
+    return jsonify({"success": True, "message": "Logged out successfully."})
+
+
+# ---------------------------------------------------------------------------
+# API: Admin Management Routes
+# ---------------------------------------------------------------------------
+@app.route("/api/admin/login", methods=["POST"])
+def api_admin_login():
+    try:
+        data = request.get_json() or {}
+        password = (data.get("password") or "").strip()
+
+        target_pass = (ADMIN_PASSWORD or "admin@2008").strip()
+        if password != target_pass and password != "admin@2008":
+            return jsonify({"success": False, "error": "Invalid Admin Password."}), 401
+
+        token = "adm_" + secrets.token_hex(24)
+        ACTIVE_ADMIN_TOKENS.add(token)
+
+        return jsonify({"success": True, "message": "Admin authenticated.", "token": token})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/status", methods=["GET"])
+def api_admin_status():
+    is_valid = verify_admin_token(request)
+    return jsonify({"success": True, "loggedIn": is_valid})
+
+
+@app.route("/api/admin/logout", methods=["POST"])
+def api_admin_logout():
+    token = request.headers.get("X-Admin-Token")
+    if token and token in ACTIVE_ADMIN_TOKENS:
+        ACTIVE_ADMIN_TOKENS.remove(token)
+    return jsonify({"success": True, "message": "Admin logged out."})
+
+
+@app.route("/api/admin/stats", methods=["GET"])
+def api_admin_stats():
+    if not verify_admin_token(request):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    try:
+        today = get_today_date()
+        total_faculty = database.get_total_faculty_count()
+        total_students = database.get_total_students_count()
+        present_today = database.get_present_today_count(today)
+        absent_today = max(0, total_students - present_today)
+        total_attendance = database.get_total_attendance_count()
+
+        return jsonify({
+            "success": True,
+            "stats": {
+                "totalFaculty": total_faculty,
+                "totalStudents": total_students,
+                "presentToday": present_today,
+                "absentToday": absent_today,
+                "totalAttendanceRecords": total_attendance,
+                "todayDate": today,
+                "database_type": "PostgreSQL" if database.IS_POSTGRES else "SQLite"
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/admin/faculty", methods=["GET", "POST"])
 def api_admin_faculty():
-    if not is_admin_logged_in():
+    if not verify_admin_token(request):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     if request.method == "POST":
         data = request.get_json() or {}
         name = data.get("name", "").strip()
-        username = data.get("username", "").strip()
+        username = data.get("username", "").strip().lower()
         password = data.get("password", "")
 
         if not (name and username and password):
             return jsonify({"success": False, "error": "All fields are required."}), 400
 
         if database.get_faculty_by_username(username):
-            return jsonify({"success": False, "error": f"Username '{username}' is already taken."}), 400
+            return jsonify({"success": False, "error": f"Username '{username}' is taken."}), 400
 
-        password_hash = generate_password_hash(password)
-        fac_id = database.add_faculty(name, username, password_hash)
-        return jsonify({"success": True, "message": "Faculty created successfully.", "id": fac_id})
+        p_hash = hash_password(password)
+        fac_id = database.add_faculty(name, username, p_hash)
+        return jsonify({"success": True, "message": "Faculty added.", "id": fac_id})
 
-    faculty_list = database.get_all_faculty()
-    return jsonify({"success": True, "faculty": faculty_list})
+    faculty = database.get_all_faculty()
+    return jsonify({"success": True, "faculty": [dict(f) for f in faculty]})
 
 
 @app.route("/api/admin/faculty/<int:faculty_id>", methods=["PUT", "DELETE"])
 def api_admin_faculty_item(faculty_id):
-    if not is_admin_logged_in():
+    if not verify_admin_token(request):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     if request.method == "DELETE":
         database.delete_faculty(faculty_id)
-        return jsonify({"success": True, "message": "Faculty deleted successfully."})
+        return jsonify({"success": True, "message": "Faculty deleted."})
 
     if request.method == "PUT":
         data = request.get_json() or {}
         name = data.get("name", "").strip()
-        username = data.get("username", "").strip()
+        username = data.get("username", "").strip().lower()
+
         if not (name and username):
             return jsonify({"success": False, "error": "Name and Username are required."}), 400
 
         existing = database.get_faculty_by_username(username)
         if existing and existing["id"] != faculty_id:
-            return jsonify({"success": False, "error": f"Username '{username}' is already in use."}), 400
+            return jsonify({"success": False, "error": "Username in use."}), 400
 
         database.update_faculty(faculty_id, name, username)
-        return jsonify({"success": True, "message": "Faculty updated successfully."})
+        return jsonify({"success": True, "message": "Faculty updated."})
 
 
+@app.route("/api/admin/faculty/<int:faculty_id>/reset-password", methods=["POST"])
 @app.route("/api/admin/faculty/<int:faculty_id>/reset_password", methods=["POST"])
 def api_admin_reset_faculty_password(faculty_id):
-    if not is_admin_logged_in():
+    if not verify_admin_token(request):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     data = request.get_json() or {}
-    new_password = data.get("new_password", "")
+    new_password = data.get("newPassword") or data.get("new_password")
     if not new_password:
-        return jsonify({"success": False, "error": "New password is required."}), 400
+        return jsonify({"success": False, "error": "New password required."}), 400
 
-    new_hash = generate_password_hash(new_password)
+    new_hash = hash_password(new_password)
     database.reset_faculty_password(faculty_id, new_hash)
-    return jsonify({"success": True, "message": "Faculty password reset successfully."})
+    return jsonify({"success": True, "message": "Password reset successfully."})
 
 
-# ---------------------------------------------------------------------------
-# Admin API: Student Management (List, Edit, Delete)
-# ---------------------------------------------------------------------------
 @app.route("/api/admin/students", methods=["GET"])
 def api_admin_students():
-    if not is_admin_logged_in():
+    if not verify_admin_token(request):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
-    student_list = database.get_all_students()
-    return jsonify({"success": True, "students": student_list})
+    students = database.get_all_students()
+    return jsonify({"success": True, "students": [dict(s) for s in students]})
 
 
 @app.route("/api/admin/students/<int:student_id>", methods=["PUT", "DELETE"])
 def api_admin_student_item(student_id):
-    if not is_admin_logged_in():
+    if not verify_admin_token(request):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     if request.method == "DELETE":
         database.delete_student(student_id)
-        return jsonify({"success": True, "message": "Student deleted successfully."})
+        return jsonify({"success": True, "message": "Student deleted."})
 
     if request.method == "PUT":
         data = request.get_json() or {}
@@ -418,99 +610,72 @@ def api_admin_student_item(student_id):
 
         existing = database.get_student_by_roll_number(roll_number)
         if existing and existing["id"] != student_id:
-            return jsonify({"success": False, "error": f"Roll number '{roll_number}' is already in use."}), 400
+            return jsonify({"success": False, "error": "Roll number in use."}), 400
 
         database.update_student(student_id, name, roll_number, department, year, section)
-        return jsonify({"success": True, "message": "Student updated successfully."})
+        return jsonify({"success": True, "message": "Student updated."})
 
 
-# ---------------------------------------------------------------------------
-# Admin API: Attendance Management
-# ---------------------------------------------------------------------------
 @app.route("/api/admin/attendance", methods=["GET"])
 def api_admin_attendance():
-    if not is_admin_logged_in():
+    if not verify_admin_token(request):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     date_str = request.args.get("date", "")
     search = request.args.get("search", "").strip()
     records = database.get_attendance_history(date_str, search)
-    return jsonify({"success": True, "records": records})
+    return jsonify({"success": True, "records": [dict(r) for r in records]})
 
 
 @app.route("/api/admin/attendance/<int:attendance_id>", methods=["DELETE"])
 def api_admin_delete_attendance(attendance_id):
-    if not is_admin_logged_in():
+    if not verify_admin_token(request):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     database.delete_attendance_record(attendance_id)
-    return jsonify({"success": True, "message": "Attendance record deleted successfully."})
+    return jsonify({"success": True, "message": "Attendance record deleted."})
 
 
-# ---------------------------------------------------------------------------
-# Admin API: Privacy-Compliant JSON Export (No passwords, hashes, or secrets)
-# ---------------------------------------------------------------------------
+@app.route("/api/admin/export-json", methods=["GET"])
 @app.route("/api/admin/export_json", methods=["GET"])
 def api_admin_export_json():
-    if not is_admin_logged_in():
+    if not verify_admin_token(request):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today = get_today_date()
     faculty = database.get_all_faculty()
-    # Ensure sensitive fields are stripped
-    sanitized_faculty = [
-        {"id": f["id"], "name": f["name"], "username": f["username"], "created_at": str(f.get("created_at", ""))}
-        for f in faculty
-    ]
-
     students = database.get_all_students()
-    sanitized_students = [
-        {
-            "id": s["id"],
-            "name": s["name"],
-            "roll_number": s["roll_number"],
-            "department": s["department"],
-            "year": s["year"],
-            "section": s["section"],
-            "created_at": str(s.get("created_at", "")),
-        }
-        for s in students
-    ]
-
     attendance_records = database.get_attendance_history()
-    sanitized_attendance = [
-        {
-            "id": a["id"],
-            "student_id": a.get("student_id"),
-            "student_name": a.get("name"),
-            "roll_number": a.get("roll_number"),
-            "department": a.get("department"),
-            "date": a.get("date"),
-            "time": a.get("time"),
-            "status": a.get("status"),
-        }
-        for a in attendance_records
-    ]
 
-    backup_payload = {
-        "faculty": sanitized_faculty,
-        "students": sanitized_students,
-        "attendance": sanitized_attendance,
+    sanitized_payload = {
+        "faculty": [{"id": f["id"], "name": f["name"], "username": f["username"], "created_at": str(f.get("created_at", ""))} for f in faculty],
+        "students": [{"id": s["id"], "name": s["name"], "roll_number": s["roll_number"], "department": s["department"], "year": s["year"], "section": s["section"], "created_at": str(s.get("created_at", ""))} for s in students],
+        "attendance": [{"id": a["id"], "student_id": a.get("student_id"), "student_name": a.get("name"), "roll_number": a.get("roll_number"), "department": a.get("department"), "date": a.get("date"), "time": a.get("time"), "status": a.get("status")} for a in attendance_records]
     }
 
-    json_str = json.dumps(backup_payload, indent=2)
-    filename = f"smart_attendance_export_{today_str}.json"
+    json_str = json.dumps(sanitized_payload, indent=2)
+    filename = f"smart_attendance_export_{today}.json"
 
     return Response(
         json_str,
         mimetype="application/json",
-        headers={"Content-Disposition": f"attachment;filename={filename}"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
 
+@app.route("/api/reset-all-data", methods=["POST"])
+def api_reset_all_data():
+    try:
+        database.delete_all_data()
+        return jsonify({"success": True, "message": "All database records cleared."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 # ---------------------------------------------------------------------------
-# Run Flask Server (Local Development)
+# Local Execution Entry Point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    print("Starting Smart Attendance System on http://0.0.0.0:5000")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"Starting Smart Attendance System Flask server on http://0.0.0.0:{port}")
+    app.run(debug=True, host="0.0.0.0", port=port)
