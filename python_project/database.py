@@ -3,7 +3,7 @@
 Smart Attendance Management System - Database Module
 =============================================================================
 Supports PostgreSQL (for permanent production on Vercel/Cloud) and SQLite
-(for offline local development) using DATABASE_URL environment variable.
+(for offline local development & /tmp serverless fallback).
 """
 
 import os
@@ -14,14 +14,25 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 IS_POSTGRES = bool(DATABASE_URL and (DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")))
 
 if IS_POSTGRES:
-    # Fix postgres:// URL prefix for psycopg2 if needed
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+    except Exception as e:
+        print(f"[Warning] Failed to import psycopg2: {e}")
+        IS_POSTGRES = False
+
+import sqlite3
+
+# Select DB_PATH with fallback to /tmp if in Vercel or read-only environment
+LOCAL_DB_PATH = os.path.join(os.path.dirname(__file__), "attendance.db")
+TMP_DB_PATH = "/tmp/attendance.db"
+
+if os.environ.get("VERCEL") or not os.access(os.path.dirname(LOCAL_DB_PATH), os.W_OK):
+    DB_PATH = TMP_DB_PATH
 else:
-    import sqlite3
-    DB_PATH = os.path.join(os.path.dirname(__file__), "attendance.db")
+    DB_PATH = LOCAL_DB_PATH
 
 
 def get_db_connection():
@@ -31,9 +42,15 @@ def get_db_connection():
         conn.autocommit = True
         return conn
     else:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            return conn
+        except sqlite3.OperationalError:
+            # Fallback to /tmp if local DB is read-only
+            conn = sqlite3.connect(TMP_DB_PATH)
+            conn.row_factory = sqlite3.Row
+            return conn
 
 
 def get_cursor(conn):
@@ -51,11 +68,7 @@ def execute_query(query_sql, params=None, fetch="none"):
 
     adapted_sql = query_sql
     if IS_POSTGRES:
-        # Replace ? with %s for PostgreSQL
         adapted_sql = query_sql.replace("?", "%s")
-    else:
-        # SQLite uses ?
-        pass
 
     if params is None:
         cursor.execute(adapted_sql)
@@ -71,7 +84,6 @@ def execute_query(query_sql, params=None, fetch="none"):
         result = [dict(r) for r in rows] if rows else []
     elif fetch == "lastrowid":
         if IS_POSTGRES:
-            # PostgreSQL last row ID from RETURNING
             try:
                 row = cursor.fetchone()
                 result = row["id"] if row and "id" in row else None
@@ -91,88 +103,91 @@ def execute_query(query_sql, params=None, fetch="none"):
 
 def init_db():
     """Initializes tables in PostgreSQL or SQLite if they don't already exist."""
-    conn = get_db_connection()
-    cursor = get_cursor(conn)
+    try:
+        conn = get_db_connection()
+        cursor = get_cursor(conn)
 
-    if IS_POSTGRES:
-        print("[Database] Initializing PostgreSQL database schema...")
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS faculty (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                username VARCHAR(255) UNIQUE NOT NULL,
-                password_hash VARCHAR(512) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+        if IS_POSTGRES:
+            print("[Database] Initializing PostgreSQL database schema...")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS faculty (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    username VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash VARCHAR(512) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS students (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                roll_number VARCHAR(100) UNIQUE NOT NULL,
-                department VARCHAR(100) NOT NULL,
-                year VARCHAR(50) NOT NULL,
-                section VARCHAR(50) NOT NULL,
-                image TEXT NOT NULL,
-                face_encoding TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS students (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    roll_number VARCHAR(100) UNIQUE NOT NULL,
+                    department VARCHAR(100) NOT NULL,
+                    year VARCHAR(50) NOT NULL,
+                    section VARCHAR(50) NOT NULL,
+                    image TEXT NOT NULL,
+                    face_encoding TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS attendance (
-                id SERIAL PRIMARY KEY,
-                student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-                date VARCHAR(20) NOT NULL,
-                time VARCHAR(20) NOT NULL,
-                status VARCHAR(50) NOT NULL DEFAULT 'Present',
-                CONSTRAINT unique_student_date UNIQUE(student_id, date)
-            );
-        """)
-        print("[Database] PostgreSQL tables verified and ready.")
-    else:
-        print(f"[Database] Initializing SQLite database schema at {DB_PATH}...")
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS faculty (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS attendance (
+                    id SERIAL PRIMARY KEY,
+                    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    date VARCHAR(20) NOT NULL,
+                    time VARCHAR(20) NOT NULL,
+                    status VARCHAR(50) NOT NULL DEFAULT 'Present',
+                    CONSTRAINT unique_student_date UNIQUE(student_id, date)
+                );
+            """)
+            print("[Database] PostgreSQL tables verified and ready.")
+        else:
+            print(f"[Database] Initializing SQLite database schema at {DB_PATH}...")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS faculty (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS students (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                roll_number TEXT UNIQUE NOT NULL,
-                department TEXT NOT NULL,
-                year TEXT NOT NULL,
-                section TEXT NOT NULL,
-                image TEXT NOT NULL,
-                face_encoding TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS students (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    roll_number TEXT UNIQUE NOT NULL,
+                    department TEXT NOT NULL,
+                    year TEXT NOT NULL,
+                    section TEXT NOT NULL,
+                    image TEXT NOT NULL,
+                    face_encoding TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS attendance (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_id INTEGER NOT NULL,
-                date TEXT NOT NULL,
-                time TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Present',
-                UNIQUE(student_id, date),
-                FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
-            );
-        """)
-        conn.commit()
-        print("[Database] SQLite database tables verified and ready.")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS attendance (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id INTEGER NOT NULL,
+                    date TEXT NOT NULL,
+                    time TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'Present',
+                    UNIQUE(student_id, date),
+                    FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+                );
+            """)
+            conn.commit()
+            print("[Database] SQLite database tables verified and ready.")
 
-    cursor.close()
-    conn.close()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"[Database Error] Could not initialize database schema: {e}")
 
 
 # ---------------------------------------------------------------------------
