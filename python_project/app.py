@@ -22,11 +22,24 @@ import attendance
 # Root and project directories
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUBLIC_DIR = os.path.join(ROOT_DIR, "public")
-STUDENTS_DIR = os.path.join(ROOT_DIR, "students")
-BACKUPS_DIR = os.path.join(ROOT_DIR, "backups")
 
-os.makedirs(STUDENTS_DIR, exist_ok=True)
-os.makedirs(BACKUPS_DIR, exist_ok=True)
+is_vercel_env = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+if is_vercel_env:
+    STUDENTS_DIR = "/tmp/students"
+    BACKUPS_DIR = "/tmp/backups"
+else:
+    STUDENTS_DIR = os.path.join(ROOT_DIR, "students")
+    BACKUPS_DIR = os.path.join(ROOT_DIR, "backups")
+
+try:
+    os.makedirs(STUDENTS_DIR, exist_ok=True)
+except Exception as e:
+    print(f"[Warning] Could not create STUDENTS_DIR: {e}")
+
+try:
+    os.makedirs(BACKUPS_DIR, exist_ok=True)
+except Exception as e:
+    print(f"[Warning] Could not create BACKUPS_DIR: {e}")
 
 # Initialize Flask App
 app = Flask(__name__, static_folder=None)
@@ -36,8 +49,11 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin@2008")
 # Active Admin Tokens
 active_admin_tokens = set()
 
-# Initialize database schema on startup
-database.init_db()
+# Initialize database schema on startup safely
+try:
+    database.init_db()
+except Exception as e:
+    print(f"[Warning] Database initialization error on startup: {e}")
 
 
 def is_admin_authorized():
