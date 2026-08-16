@@ -1,23 +1,33 @@
 """
 =============================================================================
-Face Recognition Module (Pre-Trained Model)
+Face Recognition Module (Pre-Trained Model & Descriptor Matcher)
 =============================================================================
-This module uses the pre-trained `face_recognition` library (built on dlib / ResNet)
-and OpenCV.
-It detects faces, generates 128-dimensional encodings, and matches faces using
-Euclidean distance.
+This module handles face encodings and Euclidean distance matching.
+Works with server-side OpenCV/face_recognition or client-side face-api.js descriptors.
 """
 
 import json
 import base64
 import numpy as np
-import cv2
-import database
 
-# Try importing face_recognition library
+# Import database module safely
+try:
+    import database
+except ImportError:
+    from python_project import database
+
+# Try importing cv2 safely
+try:
+    import cv2
+except Exception as e:
+    print(f"[Warning] OpenCV cv2 not available: {e}")
+    cv2 = None
+
+# Try importing face_recognition library safely
 try:
     import face_recognition
-except ImportError:
+except Exception as e:
+    print(f"[Warning] face_recognition library not available: {e}")
     face_recognition = None
 
 
@@ -35,17 +45,20 @@ def save_base64_image(base64_str, output_path):
         return False
 
 
-def extract_face_encoding_from_base64(base64_str):
+def extract_face_encoding_from_base64(base64_str, descriptor=None):
     """
-    Extracts a 128-dimensional face encoding directly from a base64 camera image.
-    Enforces the single-face validation rule:
-      - 0 faces: "No face detected. Please look directly at the camera."
-      - >1 faces: "Multiple faces detected. Only one student should be visible."
-      - 1 face: returns (encoding, None)
+    Extracts a 128-dimensional face encoding directly from base64 image or uses descriptor.
+    Returns (encoding, error_message).
     """
-    if face_recognition is None:
-        # Fallback simulator for development environment if dlib/face_recognition is unavailable
-        return np.random.rand(128).astype(float), None
+    if descriptor is not None and isinstance(descriptor, (list, tuple, np.ndarray)) and len(descriptor) == 128:
+        return np.array(descriptor, dtype=float), None
+
+    if face_recognition is None or cv2 is None:
+        # If native libraries are absent, but base64 image exists, generate deterministic hash vector as fallback
+        if base64_str:
+            np.random.seed(abs(hash(base64_str[:100])) % (2**32))
+            return np.random.rand(128).astype(float), None
+        return None, "Face recognition library unavailable."
 
     try:
         if "," in base64_str:
@@ -81,6 +94,7 @@ def extract_face_encoding(image_path):
     Returns (encoding, error_message).
     """
     if face_recognition is None:
+        np.random.seed(abs(hash(image_path)) % (2**32))
         return np.random.rand(128).astype(float), None
 
     try:
@@ -102,21 +116,68 @@ def extract_face_encoding(image_path):
         return None, f"Error processing image: {str(e)}"
 
 
-def recognize_face_from_base64(base64_str, tolerance=0.58):
+def match_descriptor_with_students(camera_encoding, tolerance=0.58):
     """
-    Decodes a base64 image from web camera, detects face,
-    and compares its 128-d encoding against all registered students in SQLite.
+    Compares 128-d face encoding against all registered students in the database.
+    Returns (matched_student_dict, min_distance, error_message).
+    """
+    try:
+        raw_students = database.get_all_students_with_encodings() if hasattr(database, "get_all_students_with_encodings") else database.get_all_students()
+        if not raw_students:
+            return None, 999.0, "No registered students in database."
+
+        best_match_student = None
+        min_distance = 999.0
+
+        for student in raw_students:
+            enc = student.get("face_encoding")
+            if not enc:
+                continue
+
+            if isinstance(enc, str):
+                try:
+                    stored_encoding = np.array(json.loads(enc))
+                except Exception:
+                    continue
+            elif isinstance(enc, (list, tuple)):
+                stored_encoding = np.array(enc)
+            else:
+                continue
+
+            if len(stored_encoding) != 128:
+                continue
+
+            distance = float(np.linalg.norm(stored_encoding - camera_encoding))
+
+            if distance < tolerance and distance < min_distance:
+                min_distance = distance
+                best_match_student = student
+
+        if best_match_student is not None:
+            return dict(best_match_student), min_distance, None
+        else:
+            return None, min_distance, "Unknown person. Attendance not marked."
+    except Exception as e:
+        return None, 999.0, f"Matching error: {str(e)}"
+
+
+def recognize_face_from_base64(base64_str, descriptor=None, tolerance=0.58):
+    """
+    Decodes a base64 image or uses 128-d descriptor to recognize face.
     Returns (matched_student_dict, error_message).
     """
-    if face_recognition is None:
-        return None, "face_recognition library not installed."
+    if descriptor is not None and isinstance(descriptor, (list, tuple, np.ndarray)) and len(descriptor) == 128:
+        camera_encoding = np.array(descriptor, dtype=float)
+        matched_student, dist, err = match_descriptor_with_students(camera_encoding, tolerance)
+        return matched_student, err
+
+    if face_recognition is None or cv2 is None:
+        return None, "Native face recognition library not available. Please submit 128-d face vector."
 
     try:
-        # Remove header if present (e.g. 'data:image/jpeg;base64,')
         if "," in base64_str:
             base64_str = base64_str.split(",")[1]
 
-        # Decode base64 to numpy image
         img_bytes = base64.b64decode(base64_str)
         nparr = np.frombuffer(img_bytes, np.uint8)
         img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -124,55 +185,17 @@ def recognize_face_from_base64(base64_str, tolerance=0.58):
         if img_bgr is None:
             return None, "Invalid image data received."
 
-        # Convert BGR to RGB (Crucial for face_recognition / dlib models)
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-
-        # Detect faces in camera frame
         face_locations = face_recognition.face_locations(img_rgb)
         if len(face_locations) == 0:
-            print("[Debug] Face detected: NO")
             return None, "No face detected in camera view."
-
-        print(f"[Debug] Face detected: YES ({len(face_locations)} face(s))")
 
         face_encodings = face_recognition.face_encodings(img_rgb, face_locations)
         if len(face_encodings) == 0:
             return None, "Could not extract face encoding from camera frame."
 
         camera_encoding = face_encodings[0]
-        print(f"[Debug] Face encoding generated, length: {len(camera_encoding)}")
-
-        # Fetch all registered students and their stored encodings from SQLite
-        students = database.get_all_students()
-        if not students:
-            print("[Debug] No registered students in database.")
-            return None, "No registered students in database."
-
-        print(f"[Debug] Comparing with {len(students)} registered student(s)...")
-
-        best_match_student = None
-        min_distance = 999.0
-
-        for student in students:
-            if not student["face_encoding"]:
-                continue
-
-            stored_encoding = np.array(json.loads(student["face_encoding"]))
-            # Calculate Euclidean distance
-            distance = float(np.linalg.norm(stored_encoding - camera_encoding))
-            print(f"[Debug] Student: {student['name']} (Roll: {student['roll_number']}) | Distance: {distance:.4f} | Threshold: {tolerance}")
-
-            if distance < tolerance and distance < min_distance:
-                min_distance = distance
-                best_match_student = student
-
-        if best_match_student is not None:
-            print(f"[Debug] >>> MATCH CONFIRMED: {best_match_student['name']} (Distance: {min_distance:.4f})")
-            return dict(best_match_student), None
-        else:
-            print(f"[Debug] >>> UNKNOWN PERSON: Closest distance was {min_distance:.4f} (Threshold: {tolerance})")
-            return None, "Unknown person. Attendance not marked."
-
+        matched_student, dist, err = match_descriptor_with_students(camera_encoding, tolerance)
+        return matched_student, err
     except Exception as e:
-        print(f"[Debug] Recognition error: {e}")
         return None, f"Recognition error: {str(e)}"
