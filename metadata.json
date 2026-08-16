@@ -1,0 +1,6 @@
+{
+  "name": "Smart Attendance System",
+  "description": "Face Recognition-Based Smart Attendance Management System with PostgreSQL and SQLite database, real-time camera recognition, and admin portal.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

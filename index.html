@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Attendance System - Face Recognition</title>
+  <link rel="stylesheet" href="/style.css" />
+  <!-- Pre-trained Face Recognition Library (face-api.js) -->
+  <script src="/js/face-api.js"></script>
+</head>
+<body class="app-body">
+
+  <div class="app-layout">
+    <!-- Clean Utility Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon-box">
+          <svg xmlns="http://www.w3.org/2000/svg" class="brand-icon-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">Smart Attendance</span>
+          <span class="brand-subtag">College Project &bull; SQLite</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-tab active" data-view="view-dashboard" id="navTabDashboard">
+          <span class="nav-dot"></span>
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          <span>Dashboard</span>
+        </button>
+
+        <button class="nav-tab" data-view="view-students" id="navTabStudents">
+          <span class="nav-dot"></span>
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span>Students</span>
+        </button>
+
+        <button class="nav-tab" data-view="view-register" id="navTabRegister">
+          <span class="nav-dot"></span>
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          <span>Register Student</span>
+        </button>
+
+        <button class="nav-tab" data-view="view-attendance" id="navTabAttendance">
+          <span class="nav-dot"></span>
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          <span>Take Attendance</span>
+        </button>
+
+        <button class="nav-tab" data-view="view-history" id="navTabHistory">
+          <span class="nav-dot"></span>
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Attendance History</span>
+        </button>
+
+        <button class="nav-tab" data-view="view-reports" id="navTabReports">
+          <span class="nav-dot"></span>
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span>Reports</span>
+        </button>
+
+        <div class="sidebar-divider"></div>
+
+        <button class="nav-tab" data-view="view-faculty-auth" id="navTabAuth">
+          <span class="nav-dot"></span>
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Faculty Account</span>
+        </button>
+
+        <button class="nav-tab" data-view="view-admin" id="navTabAdmin">
+          <span class="nav-dot"></span>
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span>Admin Portal</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="faculty-auth-status" id="sidebarAuthStatus">
+          <span class="status-indicator-dot" id="authIndicatorDot"></span>
+          <span id="authStatusText">Faculty Logged In</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="sidebarLogoutBtn" onclick="handleLogout()" style="width: 100%; margin-top: 8px;">
+          <span>Logout</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Application Wrapper -->
+    <div class="app-main-wrapper">
+      <!-- Clean Minimal Header -->
+      <header class="app-topbar">
+        <div class="topbar-left">
+          <button class="mobile-sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div>
+            <h1 class="topbar-title" id="pageMainHeading">System Overview</h1>
+            <span id="modelLoadingStatus" class="model-status-indicator">Loading AI Models...</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="live-clock" id="liveClock">Loading Clock...</div>
+          <div class="user-profile-badge" id="topbarProfileBadge">
+            <div class="user-details">
+              <p class="user-name" id="topbarFacultyName">Prof. Faculty</p>
+              <p class="user-dept" id="topbarFacultyRole">Computer Science Dept.</p>
+            </div>
+            <div class="user-avatar" id="topbarFacultyAvatar" title="Faculty Profile">
+              <span>FC</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="topbarLogoutBtn" onclick="handleLogout()" title="Logout from Faculty Account">
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Scrollable Content Container -->
+      <main class="main-container">
+
+        <!-- ====================================================================
+             VIEW 1: DASHBOARD
+             ==================================================================== -->
+        <section class="view-section active" id="view-dashboard">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Attendance Dashboard</h2>
+              <p class="section-subtitle">Real-time attendance summary for today: <strong id="todayDateLabel">-</strong></p>
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-primary" onclick="switchView('view-attendance')">
+                <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Take Attendance</span>
+              </button>
+              <button class="btn btn-secondary" onclick="switchView('view-register')">
+                <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Register Student</span>
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="resetTodayAttendance()" title="Clear attendance records marked today">
+                <span>Reset Today's Attendance</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 Metric Cards as per prompt -->
+          <div class="metrics-grid">
+            <div class="metric-card total" onclick="switchView('view-students')">
+              <p class="metric-label">Total Students</p>
+              <h3 class="metric-value text-blue" id="statTotalStudents">0</h3>
+              <div class="metric-progress-track">
+                <div class="metric-progress-bar bg-blue" id="totalStudentsBar" style="width: 100%;"></div>
+              </div>
+              <div class="metric-footer">Enrolled in Database</div>
+            </div>
+
+            <div class="metric-card faculty" onclick="switchView('view-faculty-auth')">
+              <p class="metric-label">Total Faculty</p>
+              <h3 class="metric-value text-purple" id="statTotalFaculty">0</h3>
+              <div class="metric-progress-track">
+                <div class="metric-progress-bar bg-purple" style="width: 100%;"></div>
+              </div>
+              <div class="metric-footer">Registered Faculty Users</div>
+            </div>
+
+            <div class="metric-card present">
+              <p class="metric-label">Present Today</p>
+              <h3 class="metric-value text-emerald" id="statPresentToday">0</h3>
+              <div class="metric-progress-track">
+                <div class="metric-progress-bar bg-emerald" id="presentProgressBar" style="width: 0%;"></div>
+              </div>
+              <div class="metric-footer">Face Recognized &amp; Marked</div>
+            </div>
+
+            <div class="metric-card absent">
+              <p class="metric-label">Absent Today</p>
+              <h3 class="metric-value text-rose" id="statAbsentToday">0</h3>
+              <div class="metric-progress-track">
+                <div class="metric-progress-bar bg-rose" id="absentProgressBar" style="width: 0%;"></div>
+              </div>
+              <div class="metric-footer">Total &minus; Present Today</div>
+            </div>
+          </div>
+
+          <!-- Two-column Section: Live Logs & Quick Controls -->
+          <div class="dashboard-grid-layout">
+            <div class="dashboard-primary-col">
+              <!-- Today's Attendance Table -->
+              <div class="table-card">
+                <div class="table-header-box">
+                  <div>
+                    <h3 class="table-title">Today's Attendance Logs</h3>
+                    <p class="table-subtitle">Students marked present today</p>
+                  </div>
+                  <span class="status-badge good" id="presentCountBadge">0 Present</span>
+                </div>
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Roll No</th>
+                        <th>Student Name</th>
+                        <th>Department</th>
+                        <th>Time</th>
+                        <th style="text-align: right;">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="todayAttendanceTableBody">
+                      <tr>
+                        <td colspan="5" class="empty-state">No attendance records yet for today.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Today's Absent Students Table -->
+              <div class="table-card">
+                <div class="table-header-box">
+                  <div>
+                    <h3 class="table-title">Absent Students Today</h3>
+                    <p class="table-subtitle text-rose-muted">Registered students not yet scanned today</p>
+                  </div>
+                  <span class="status-badge absent" id="absentCountBadge">0 Absent</span>
+                </div>
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Roll No</th>
+                        <th>Student Name</th>
+                        <th>Department</th>
+                        <th>Year &amp; Section</th>
+                        <th style="text-align: right;">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="absentStudentsTableBody">
+                      <tr>
+                        <td colspan="5" class="empty-state">No absent students.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dashboard Side Column: Quick Navigation & System Status -->
+            <div class="dashboard-side-col">
+              <div class="dark-feature-card">
+                <div class="dark-card-content">
+                  <h2 class="dark-card-title">
+                    <span class="pulse-dot"></span> Attendance Scanner
+                  </h2>
+                  <p style="font-size: 13px; color: #94a3b8; margin: 8px 0 16px;">
+                    Separate camera scanner for taking real-time attendance with face recognition.
+                  </p>
+                  <button class="btn btn-primary btn-full" onclick="switchView('view-attendance')">
+                    OPEN ATTENDANCE SCANNER
+                  </button>
+                </div>
+              </div>
+
+              <div class="health-card">
+                <h3 class="health-card-title">System Status</h3>
+                <div class="health-list">
+                  <div class="health-row">
+                    <span class="health-label">Database</span>
+                    <span class="health-badge active">SQLite (attendance.db)</span>
+                  </div>
+                  <div class="health-row">
+                    <span class="health-label">Face Recognition AI</span>
+                    <span class="health-badge active" id="healthModelBadge">LOADED</span>
+                  </div>
+                  <div class="health-row">
+                    <span class="health-label">Camera Status</span>
+                    <span class="health-badge active" id="healthCameraBadge">READY</span>
+                  </div>
+                  <div class="health-row">
+                    <span class="health-label">Duplicate Prevention</span>
+                    <span class="health-badge active">ENABLED</span>
+                  </div>
+                </div>
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                  <button class="btn btn-secondary btn-sm" style="width: 100%; color: #dc2626;" onclick="confirmClearAllData()">
+                    Clear Entire Database
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             VIEW 2: STUDENTS LIST (WITH DELETE ACTION)
+             ==================================================================== -->
+        <section class="view-section" id="view-students">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Registered Students</h2>
+              <p class="section-subtitle">Manage enrolled student profiles and their stored 128-d face encodings</p>
+            </div>
+            <div class="toolbar">
+              <span class="status-badge good" id="studentsCountBadge">0 Students</span>
+              <button class="btn btn-primary" onclick="switchView('view-register')">
+                <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Register New Student</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Photo</th>
+                    <th>Roll No</th>
+                    <th>Student Name</th>
+                    <th>Department</th>
+                    <th>Year &amp; Section</th>
+                    <th>Enrolled Date</th>
+                    <th style="text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                  <tr>
+                    <td colspan="7" class="empty-state">No students registered yet. Click "Register New Student" to enroll.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             VIEW 3: CAMERA 1 - REGISTER STUDENT
+             ==================================================================== -->
+        <section class="view-section" id="view-register">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Student Registration (Camera 1)</h2>
+              <p class="section-subtitle">Dedicated camera for capturing and storing face encodings into SQLite</p>
+            </div>
+          </div>
+
+          <div class="form-card">
+            <form id="registerStudentForm" onsubmit="handleStudentRegisterSubmit(event)">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label" for="regName">Student Full Name *</label>
+                  <input type="text" id="regName" class="form-input" placeholder="e.g. Murali Krishna" required />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="regRollNumber">Roll Number *</label>
+                  <input type="text" id="regRollNumber" class="form-input" placeholder="e.g. 101" required />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="regDept">Department *</label>
+                  <select id="regDept" class="form-select" required>
+                    <option value="">Select Department</option>
+                    <option value="Computer Science & Engineering">Computer Science &amp; Engineering (CSE)</option>
+                    <option value="Information Technology">Information Technology (IT)</option>
+                    <option value="Electronics & Communication">Electronics &amp; Communication (ECE)</option>
+                    <option value="Mechanical Engineering">Mechanical Engineering (MECH)</option>
+                    <option value="Civil Engineering">Civil Engineering (CIVIL)</option>
+                    <option value="Electrical Engineering">Electrical Engineering (EEE)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="regYear">Academic Year *</label>
+                  <select id="regYear" class="form-select" required>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year" selected>3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="regSection">Section *</label>
+                  <input type="text" id="regSection" class="form-input" placeholder="e.g. A" value="A" required />
+                </div>
+
+                <!-- Registration Camera (Camera 1) -->
+                <div class="form-group full-width">
+                  <label class="form-label">Registration Face Camera *</label>
+                  <div class="registration-camera-container">
+                    <div class="reg-camera-preview-box">
+                      <div class="camera-placeholder" id="regCameraPlaceholder">
+                        <div class="camera-idle-icon">
+                          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <p style="font-weight: 600; margin: 4px 0;">Registration Camera Inactive</p>
+                        <p style="font-size: 13px; color: var(--text-muted);">Click "Start Camera" or "Upload Image" to capture face</p>
+                      </div>
+
+                      <video id="regVideo" class="camera-video" playsinline muted autoplay style="display: none;"></video>
+                      <canvas id="regCanvas" class="camera-canvas" style="display: none;"></canvas>
+                      <img id="regCapturedImg" class="photo-preview-img" style="display: none;" alt="Captured Student Face" />
+                    </div>
+
+                    <!-- Registration Camera Controls -->
+                    <div class="reg-camera-controls">
+                      <button type="button" class="btn btn-primary" id="regStartCameraBtn" onclick="startRegCamera()">
+                        <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Start Camera</span>
+                      </button>
+
+                      <button type="button" class="btn btn-secondary" id="regStopCameraBtn" onclick="stopRegCamera()" style="display: none;">
+                        <span>Stop Camera</span>
+                      </button>
+
+                      <button type="button" class="btn btn-success" id="regCaptureBtn" onclick="captureRegPhoto()" style="display: none;">
+                        <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        </svg>
+                        <span>Capture Photo</span>
+                      </button>
+
+                      <button type="button" class="btn btn-secondary" id="regRetakeBtn" onclick="retakeRegPhoto()" style="display: none;">
+                        <span>Retake Photo</span>
+                      </button>
+
+                      <label class="btn btn-secondary" style="cursor: pointer; margin-bottom: 0;">
+                        <input type="file" id="regFileInput" accept="image/*" style="display: none;" onchange="handleRegFileSelect(event)" />
+                        <span>Upload File</span>
+                      </label>
+                    </div>
+
+                    <!-- Face Detection Feedback Status Box -->
+                    <div class="face-validation-box" id="regValidationBox">
+                      <span class="face-val-icon" id="regValidationIcon">&bull;</span>
+                      <span id="regValidationText">Ready. Look directly at the camera with only one person in frame.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-large" id="regSubmitBtn">
+                  <span>Register Student</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             VIEW 4: CAMERA 2 - TAKE ATTENDANCE (SCANNER CAMERA)
+             ==================================================================== -->
+        <section class="view-section" id="view-attendance">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Attendance Scanner (Camera 2)</h2>
+              <p class="section-subtitle">Completely separate camera for scanning students and preventing duplicate records</p>
+            </div>
+          </div>
+
+          <div class="camera-attendance-container">
+            <!-- Left: Live Attendance Camera Box -->
+            <div class="camera-box">
+              <div class="camera-box-header">
+                <div>
+                  <h3 class="camera-box-title">Live Attendance Scanner</h3>
+                  <p class="camera-box-subtitle">Laptop Webcam or Mobile Browser (Front/Back Camera)</p>
+                </div>
+                <span class="status-badge warning" id="scannerModeBadge">Scanner Inactive</span>
+              </div>
+
+              <div class="camera-feed-wrapper">
+                <div class="camera-placeholder" id="scannerPlaceholder">
+                  <div class="camera-idle-icon">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <strong style="font-size: 16px;">Attendance Scanner Inactive</strong>
+                  <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Click "Start Scanner" to begin scanning faces</div>
+                </div>
+
+                <video id="scannerVideo" class="camera-video" playsinline muted autoplay style="display: none;"></video>
+                <canvas id="scannerCanvas" class="camera-canvas"></canvas>
+              </div>
+
+              <!-- Scanner Controls -->
+              <div class="camera-controls">
+                <button class="btn btn-success btn-large" id="startScannerBtn" onclick="startScannerCamera()">
+                  <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Start Scanner</span>
+                </button>
+
+                <button class="btn btn-danger btn-large" id="stopScannerBtn" onclick="stopScannerCamera()" style="display: none;">
+                  <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                  </svg>
+                  <span>Stop Scanner</span>
+                </button>
+
+                <button class="btn btn-secondary" id="flipScannerBtn" onclick="flipScannerFacingMode()" title="Flip Front / Rear Camera for Smartphones">
+                  <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span id="flipBtnLabel">Flip Camera (Front)</span>
+                </button>
+
+                <label class="btn btn-secondary" style="cursor: pointer; margin-bottom: 0;" title="Test attendance recognition using a photo or registered student image">
+                  <input type="file" id="scannerTestFileInput" accept="image/*" style="display: none;" onchange="handleScannerTestFile(event)" />
+                  <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>Test Photo File</span>
+                </label>
+              </div>
+
+              <!-- Structured Attendance Scanner Live State Indicators -->
+              <div class="scanner-states-panel" id="scannerStatesPanel" style="background: var(--bg-canvas); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 14px 18px; margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+                  <span style="color: var(--text-secondary); font-weight: 500;">Camera Status:</span>
+                  <span id="stateCameraStatus" style="font-weight: 700; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                    <span class="status-dot" id="scannerStatusDot"></span>
+                    <span id="stateCameraText">Camera not started</span>
+                  </span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+                  <span style="color: var(--text-secondary); font-weight: 500;">Face Status:</span>
+                  <span id="stateFaceText" style="font-weight: 600; color: var(--text-muted);">No face detected</span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+                  <span style="color: var(--text-secondary); font-weight: 500;">Recognition:</span>
+                  <strong id="stateRecognitionText" style="color: var(--text-primary); font-size: 14px;">Waiting for scanner...</strong>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13.5px;">
+                  <span style="color: var(--text-secondary); font-weight: 500;">Attendance Status:</span>
+                  <span id="stateAttendanceStatus" class="status-badge" style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-default);">Standby</span>
+                </div>
+              </div>
+
+              <!-- Recognition Notification Alert Box -->
+              <div class="recognition-alert-box" id="recognitionAlertBox"></div>
+            </div>
+
+            <!-- Right: Real-time Attendance Feed -->
+            <div class="table-card" style="margin-bottom: 0;">
+              <div class="table-header-box">
+                <div>
+                  <h3 class="table-title">Recent Marked Attendance</h3>
+                  <p class="table-subtitle">Automatically logged in SQLite</p>
+                </div>
+                <span class="status-badge present">Live Updates</span>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Roll No</th>
+                      <th>Name</th>
+                      <th>Time</th>
+                      <th style="text-align: right;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="liveAttendanceFeedBody">
+                    <tr>
+                      <td colspan="4" class="empty-state">No students marked yet in this session.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             VIEW 5: ATTENDANCE HISTORY
+             ==================================================================== -->
+        <section class="view-section" id="view-history">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Attendance History</h2>
+              <p class="section-subtitle">Search and inspect past attendance records by date</p>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn-secondary" id="exportCsvBtn" onclick="exportHistoryCsv()">
+                <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Export to CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="table-header-box">
+              <div class="history-toolbar">
+                <div class="toolbar-date-group">
+                  <label class="form-label" style="margin-bottom: 0;">Select Date:</label>
+                  <input type="date" id="historyDateInput" class="form-input" style="padding: 7px 12px;" onchange="fetchHistoryData()" />
+                </div>
+
+                <div class="toolbar-search-group">
+                  <input type="text" id="historySearchInput" class="form-input" placeholder="Search by name, roll number, department..." style="padding: 7px 12px; width: 280px;" oninput="fetchHistoryData()" />
+                  <span id="historyCountLabel" class="status-badge" style="background: #f1f5f9; color: var(--text-main);">0 Records</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Roll No</th>
+                    <th>Student Name</th>
+                    <th>Department</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th style="text-align: right;">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                  <tr>
+                    <td colspan="6" class="empty-state">Select a date to view attendance records.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             VIEW 6: REPORTS & PERCENTAGES
+             ==================================================================== -->
+        <section class="view-section" id="view-reports">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Attendance Reports &amp; Percentages</h2>
+              <p class="section-subtitle">Formula: Attendance % = (Present / Total Classes) &times; 100</p>
+            </div>
+          </div>
+
+          <div class="metrics-grid" style="margin-bottom: 24px;">
+            <div class="metric-card">
+              <p class="metric-label">Total Classes Conducted</p>
+              <h3 class="metric-value text-blue" id="reportTotalDays">0</h3>
+              <div class="metric-progress-track">
+                <div class="metric-progress-bar bg-blue" style="width: 100%;"></div>
+              </div>
+              <div class="metric-footer">Unique attendance dates</div>
+            </div>
+
+            <div class="metric-card">
+              <p class="metric-label">Overall Average Attendance</p>
+              <h3 class="metric-value text-emerald" id="reportAvgPercentage">0%</h3>
+              <div class="metric-progress-track">
+                <div class="metric-progress-bar bg-emerald" id="reportAvgProgressBar" style="width: 0%;"></div>
+              </div>
+              <div class="metric-footer">Across all registered students</div>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="table-header-box">
+              <div>
+                <h3 class="table-title">Student-wise Attendance Report</h3>
+                <p class="table-subtitle">Eligibility Benchmark: &ge; 75% for examinations</p>
+              </div>
+              <span class="status-badge good">Academic Session 2024-25</span>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Roll No</th>
+                    <th>Student Name</th>
+                    <th>Department &amp; Year</th>
+                    <th>Total Classes</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                    <th>Attendance %</th>
+                    <th style="text-align: right;">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="reportsTableBody">
+                  <tr>
+                    <td colspan="8" class="empty-state">Loading attendance reports...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             VIEW 7: FACULTY AUTHENTICATION (LOGIN & REGISTRATION)
+             ==================================================================== -->
+        <section class="view-section" id="view-faculty-auth">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Faculty Portal &amp; Authentication</h2>
+              <p class="section-subtitle">Faculty sign in &amp; new account registration (Stored in SQLite with SHA-256 password hashing)</p>
+            </div>
+          </div>
+
+          <!-- Auth Switch Toggle -->
+          <div class="auth-toggle-bar">
+            <button type="button" class="auth-toggle-btn active" id="authToggleLogin" onclick="toggleFacultyAuthMode('login')">
+              <span>Faculty Login</span>
+            </button>
+            <button type="button" class="auth-toggle-btn" id="authToggleRegister" onclick="toggleFacultyAuthMode('register')">
+              <span>Register New Faculty</span>
+            </button>
+          </div>
+
+          <div style="max-width: 520px; margin: 0 auto;">
+            <!-- Faculty Login Card -->
+            <div class="form-card auth-card" id="facultyLoginCard">
+              <div class="auth-card-header">
+                <h3 class="table-title">Faculty Sign In</h3>
+                <p class="table-subtitle">Access student records and attendance control</p>
+              </div>
+
+              <form id="facultyLoginForm" onsubmit="handleFacultyLogin(event)">
+                <div class="form-group">
+                  <label class="form-label" for="loginUsername">Username *</label>
+                  <input type="text" id="loginUsername" class="form-input" placeholder="e.g. prof_sharma" required />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="loginPassword">Password *</label>
+                  <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" required />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" style="margin-top: 12px;">
+                  <span>Login to Dashboard</span>
+                </button>
+              </form>
+
+              <div style="text-align: center; margin-top: 16px; font-size: 13.5px; color: var(--text-muted);">
+                <span>New Faculty?</span>
+                <button type="button" onclick="toggleFacultyAuthMode('register')" style="background: none; border: none; color: var(--brand-blue); font-weight: 600; cursor: pointer; text-decoration: underline; margin-left: 4px;">
+                  Register here
+                </button>
+              </div>
+            </div>
+
+            <!-- Faculty Registration Card -->
+            <div class="form-card auth-card" id="facultyRegisterCard" style="display: none;">
+              <div class="auth-card-header">
+                <h3 class="table-title">Faculty Registration</h3>
+                <p class="table-subtitle">Create a verified faculty account stored in SQLite</p>
+              </div>
+
+              <form id="facultyRegisterForm" onsubmit="handleFacultyRegister(event)">
+                <div class="form-group">
+                  <label class="form-label" for="regFacultyName">Faculty Full Name *</label>
+                  <input type="text" id="regFacultyName" class="form-input" placeholder="e.g. Dr. Rajesh Sharma" required />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="regFacultyUsername">Username *</label>
+                  <input type="text" id="regFacultyUsername" class="form-input" placeholder="e.g. prof_rajesh" required />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="regFacultyPassword">Password *</label>
+                  <input type="password" id="regFacultyPassword" class="form-input" placeholder="Create secure password" required />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="regFacultyConfirmPassword">Confirm Password *</label>
+                  <input type="password" id="regFacultyConfirmPassword" class="form-input" placeholder="Re-enter password" required />
+                </div>
+
+                <button type="submit" class="btn btn-secondary btn-full" style="margin-top: 12px;">
+                  <span>Register Faculty</span>
+                </button>
+              </form>
+
+              <div style="text-align: center; margin-top: 16px; font-size: 13.5px; color: var(--text-muted);">
+                <span>Already registered?</span>
+                <button type="button" onclick="toggleFacultyAuthMode('login')" style="background: none; border: none; color: var(--brand-blue); font-weight: 600; cursor: pointer; text-decoration: underline; margin-left: 4px;">
+                  Login here
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ====================================================================
+             VIEW 8: PROTECTED ADMIN PORTAL & DATABASE MANAGEMENT
+             ==================================================================== -->
+        <section class="view-section" id="view-admin">
+          <!-- State A: Admin Login Lock Screen (When not logged in as Admin) -->
+          <div id="adminLockedState" class="admin-lock-card">
+            <div class="admin-lock-icon">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="28" height="28">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h2 class="section-title" style="font-size: 22px; margin-bottom: 6px;">ADMIN PORTAL</h2>
+            <p class="section-subtitle" style="margin-bottom: 24px;">Enter the Master Admin Password to manage faculty, students, attendance, and local SQLite database backups.</p>
+
+            <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+              <div class="form-group" style="text-align: left; margin-bottom: 16px;">
+                <label class="form-label" for="adminPasswordInput">Admin Password *</label>
+                <input type="password" id="adminPasswordInput" class="form-input" placeholder="Enter admin password" required autocomplete="current-password" />
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-full" id="adminLoginBtn">
+                <span>Unlock Admin Portal</span>
+              </button>
+            </form>
+
+            <div style="margin-top: 20px; font-size: 12px; color: var(--text-light);">
+              <span>Protected Area &bull; Primary Central SQLite Database (attendance.db)</span>
+            </div>
+          </div>
+
+          <!-- State B: Admin Unlocked Dashboard (When authenticated) -->
+          <div id="adminUnlockedState" style="display: none;">
+            <!-- Admin Top Header Banner -->
+            <div class="section-header" style="background-color: var(--bg-surface); padding: 18px 24px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 20px;">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="background-color: var(--brand-blue-light); color: var(--brand-blue); padding: 10px; border-radius: var(--radius-md);">
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="26" height="26">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <div>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <h2 class="section-title" style="margin: 0;">ADMIN PORTAL</h2>
+                    <span class="admin-badge">Master Administrator</span>
+                  </div>
+                  <p class="section-subtitle" style="margin: 0; margin-top: 2px;">SQLite Database Management &bull; Local Database Backup &bull; Sanitized JSON Exports</p>
+                </div>
+              </div>
+
+              <div class="toolbar-actions">
+                <button class="btn btn-secondary btn-sm" onclick="handleAdminLogout()">
+                  <span>Logout Admin</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Admin Sub-Navigation Tabs -->
+            <div class="admin-nav-bar">
+              <button class="admin-nav-btn active" data-tab="admin-tab-overview" onclick="switchAdminTab('admin-tab-overview')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                <span>Overview</span>
+              </button>
+
+              <button class="admin-nav-btn" data-tab="admin-tab-faculty" onclick="switchAdminTab('admin-tab-faculty')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span>Faculty Management</span>
+              </button>
+
+              <button class="admin-nav-btn" data-tab="admin-tab-students" onclick="switchAdminTab('admin-tab-students')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <span>Student Management</span>
+              </button>
+
+              <button class="admin-nav-btn" data-tab="admin-tab-attendance" onclick="switchAdminTab('admin-tab-attendance')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <span>Attendance Records</span>
+              </button>
+
+              <button class="admin-nav-btn" data-tab="admin-tab-database" onclick="switchAdminTab('admin-tab-database')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                </svg>
+                <span>Database &amp; JSON Backup</span>
+              </button>
+            </div>
+
+            <!-- TAB PANE 1: OVERVIEW -->
+            <div class="admin-tab-pane active" id="admin-tab-overview">
+              <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
+                <div class="metric-card">
+                  <p class="metric-label">Total Faculty</p>
+                  <h3 class="metric-value text-blue" id="adminTotalFaculty">0</h3>
+                  <div class="metric-footer">Stored in SQLite (faculty table)</div>
+                </div>
+
+                <div class="metric-card">
+                  <p class="metric-label">Total Students</p>
+                  <h3 class="metric-value text-blue" id="adminTotalStudents">0</h3>
+                  <div class="metric-footer">Stored with 128-d Face Encodings</div>
+                </div>
+
+                <div class="metric-card">
+                  <p class="metric-label">Present Today</p>
+                  <h3 class="metric-value text-emerald" id="adminPresentToday">0</h3>
+                  <div class="metric-footer">Verified Attendance</div>
+                </div>
+
+                <div class="metric-card">
+                  <p class="metric-label">Absent Today</p>
+                  <h3 class="metric-value text-rose" id="adminAbsentToday">0</h3>
+                  <div class="metric-footer">Not Yet Detected</div>
+                </div>
+
+                <div class="metric-card">
+                  <p class="metric-label">Total Attendance Records</p>
+                  <h3 class="metric-value" style="color: #6366f1;" id="adminTotalAttendance">0</h3>
+                  <div class="metric-footer">Permanent SQLite Log Entries</div>
+                </div>
+              </div>
+
+              <!-- Quick Control Cards -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+                <div class="form-card">
+                  <h3 class="table-title" style="margin-bottom: 6px;">SQLite Database Backup (.db)</h3>
+                  <p class="table-subtitle" style="margin-bottom: 16px;">Create a timestamped SQLite database copy in the backups/ folder or download attendance.db directly.</p>
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="handleCreateDatabaseBackup()">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      <span>Create .db Backup</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="handleDownloadDbFile()">
+                      <span>Download attendance.db</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-card">
+                  <h3 class="table-title" style="margin-bottom: 6px;">JSON Data Export</h3>
+                  <p class="table-subtitle" style="margin-bottom: 16px;">Export clean SQLite database records as standard JSON (Passwords &amp; biometrics stripped for privacy).</p>
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="downloadAdminJsonExport()">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span>Export JSON File</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="switchAdminTab('admin-tab-database'); loadAndDisplayAdminJson();">
+                      <span>Preview JSON</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB PANE 2: FACULTY MANAGEMENT -->
+            <div class="admin-tab-pane" id="admin-tab-faculty">
+              <div class="table-card">
+                <div class="table-header-box">
+                  <div>
+                    <h3 class="table-title">Registered Faculty Members</h3>
+                    <p class="table-subtitle">Instructors with login credentials stored securely in database</p>
+                  </div>
+                  <div style="display: flex; gap: 10px; align-items: center;">
+                    <span class="status-badge" id="adminFacultyCountBadge">0 Faculty</span>
+                    <button class="btn btn-primary btn-sm" onclick="openAddFacultyModal()">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Add Faculty</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Username</th>
+                        <th>Created Date</th>
+                        <th style="text-align: right;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminFacultyTableBody">
+                      <tr><td colspan="5" class="empty-state">Loading faculty list...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB PANE 3: STUDENT MANAGEMENT -->
+            <div class="admin-tab-pane" id="admin-tab-students">
+              <div class="table-card">
+                <div class="table-header-box">
+                  <div>
+                    <h3 class="table-title">Enrolled Students</h3>
+                    <p class="table-subtitle">Active student profiles with face embeddings stored in database</p>
+                  </div>
+                  <div style="display: flex; gap: 10px; align-items: center;">
+                    <span class="status-badge" id="adminStudentCountBadge">0 Students</span>
+                    <button class="btn btn-primary btn-sm" onclick="switchView('view-register')">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Register Face</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Photo</th>
+                        <th>ID</th>
+                        <th>Roll Number</th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Year &amp; Section</th>
+                        <th>Enrolled Date</th>
+                        <th style="text-align: right;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminStudentsTableBody">
+                      <tr><td colspan="8" class="empty-state">Loading student records...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB PANE 4: ATTENDANCE RECORDS -->
+            <div class="admin-tab-pane" id="admin-tab-attendance">
+              <div class="table-card">
+                <div class="table-header-box" style="flex-wrap: wrap; gap: 12px;">
+                  <div>
+                    <h3 class="table-title">Master Attendance Records</h3>
+                    <p class="table-subtitle">Search and filter all verified attendance logs stored in database</p>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="date" id="adminAttendanceDateFilter" class="form-input" style="width: auto; padding: 6px 12px;" onchange="fetchAdminAttendance()" />
+                    <input type="text" id="adminAttendanceSearch" class="form-input" placeholder="Search student or roll no..." style="width: 220px; padding: 6px 12px;" oninput="fetchAdminAttendance()" />
+                    <button class="btn btn-secondary btn-sm" onclick="fetchAdminAttendance()">Filter</button>
+                  </div>
+                </div>
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Log ID</th>
+                        <th>Roll No</th>
+                        <th>Student Name</th>
+                        <th>Department</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th style="text-align: right;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminAttendanceTableBody">
+                      <tr><td colspan="7" class="empty-state">Loading attendance records...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB PANE 5: DATABASE MANAGEMENT & JSON BACKUP -->
+            <div class="admin-tab-pane" id="admin-tab-database">
+              <!-- Database Status Box -->
+              <div class="database-status-box" style="background-color: var(--bg-surface); border: 1px solid var(--border-default);">
+                <div class="database-indicator">
+                  <div style="background-color: #eff6ff; padding: 10px; border-radius: var(--radius-md); color: var(--brand-blue);">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 style="font-size: 15px; font-weight: 600; color: var(--text-primary);" id="adminDatabaseTitle">Central Database: PostgreSQL / SQLite</h4>
+                    <p style="font-size: 13px; color: var(--text-muted);" id="adminDatabaseStatusDesc">Primary authoritative storage &bull; Zero External Dependencies</p>
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                  <button class="btn btn-primary" id="adminBackupDbBtn" onclick="handleCreateDatabaseBackup()">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16" class="btn-icon">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    <span>Backup Database (.db)</span>
+                  </button>
+                  <button class="btn btn-secondary" onclick="handleDownloadDbFile()">
+                    <span>Download attendance.db</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- JSON Export and Viewer Section -->
+              <div class="table-card">
+                <div class="table-header-box">
+                  <div>
+                    <h3 class="table-title">Sanitized JSON Database Snapshot &amp; Export</h3>
+                    <p class="table-subtitle">Safe export format compliant with data privacy (No passwords, hashes, or raw biometric vectors)</p>
+                  </div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary btn-sm" onclick="loadAndDisplayAdminJson()">
+                      <span>Refresh JSON Preview</span>
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="downloadAdminJsonExport()">
+                      <span>Download .JSON Backup</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="json-viewer-container">
+                  <div class="json-viewer-header">
+                    <span>OUTPUT: smart_attendance_backup.json</span>
+                    <button class="btn-sm" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 4px; padding: 2px 8px; cursor: pointer;" onclick="copyJsonToClipboard()">
+                      Copy JSON
+                    </button>
+                  </div>
+                  <pre class="json-viewer-code" id="adminJsonPreviewCode">Click "Refresh JSON Preview" to view sanitized database schema...</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Minimal Utility Footer -->
+      <footer class="app-footer">
+        <p>Smart Attendance Management System &bull; SQLite &bull; OpenCV &bull; Pre-trained Face Recognition &bull; College Project</p>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Modals for Faculty & Student Management -->
+  <!-- Modal 1: Add Faculty -->
+  <div class="modal-backdrop" id="modalAddFaculty" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Add New Faculty Member</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalAddFaculty')">&times;</button>
+      </div>
+      <form id="formAddFaculty" onsubmit="submitAddFaculty(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="addFacultyName">Full Name</label>
+            <input type="text" id="addFacultyName" class="form-input" placeholder="e.g., Dr. Alan Turing" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="addFacultyUsername">Username</label>
+            <input type="text" id="addFacultyUsername" class="form-input" placeholder="e.g., prof.alan" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="addFacultyPassword">Password</label>
+            <input type="password" id="addFacultyPassword" class="form-input" placeholder="Enter secure password" required minlength="4" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modalAddFaculty')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnAddFacultySubmit">Create Faculty</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Edit Faculty -->
+  <div class="modal-backdrop" id="modalEditFaculty" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Faculty Member</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalEditFaculty')">&times;</button>
+      </div>
+      <form id="formEditFaculty" onsubmit="submitEditFaculty(event)">
+        <input type="hidden" id="editFacultyId" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="editFacultyName">Full Name</label>
+            <input type="text" id="editFacultyName" class="form-input" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editFacultyUsername">Username</label>
+            <input type="text" id="editFacultyUsername" class="form-input" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditFaculty')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnEditFacultySubmit">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Reset Faculty Password -->
+  <div class="modal-backdrop" id="modalResetFacultyPassword" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Reset Faculty Password</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalResetFacultyPassword')">&times;</button>
+      </div>
+      <form id="formResetFacultyPassword" onsubmit="submitResetFacultyPassword(event)">
+        <input type="hidden" id="resetFacultyId" />
+        <div class="modal-body">
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;" id="resetFacultyDesc">
+            Enter a new password for faculty member.
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="resetFacultyNewPassword">New Password</label>
+            <input type="password" id="resetFacultyNewPassword" class="form-input" placeholder="Enter new password" required minlength="4" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modalResetFacultyPassword')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnResetFacultyPasswordSubmit">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Edit Student -->
+  <div class="modal-backdrop" id="modalEditStudent" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Student Information</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalEditStudent')">&times;</button>
+      </div>
+      <form id="formEditStudent" onsubmit="submitEditStudent(event)">
+        <input type="hidden" id="editStudentId" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="editStudentName">Student Name</label>
+            <input type="text" id="editStudentName" class="form-input" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editStudentRoll">Roll Number</label>
+            <input type="text" id="editStudentRoll" class="form-input" required />
+          </div>
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label" for="editStudentDept">Department</label>
+              <input type="text" id="editStudentDept" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editStudentYear">Year</label>
+              <input type="text" id="editStudentYear" class="form-input" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editStudentSection">Section</label>
+            <input type="text" id="editStudentSection" class="form-input" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditStudent')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnEditStudentSubmit">Update Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: View Student Profile -->
+  <div class="modal-backdrop" id="modalViewStudent" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Student Profile</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalViewStudent')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
+          <img id="viewStudentImg" src="/images/default-avatar.svg" alt="Student Photo" style="width: 80px; height: 80px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-default);" onerror="this.onerror=null; this.src='/images/default-avatar.svg'" />
+          <div>
+            <h4 id="viewStudentName" style="font-size: 17px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px 0;">-</h4>
+            <p id="viewStudentRoll" style="font-size: 13px; font-weight: 600; color: var(--brand-blue); margin: 0 0 2px 0;">-</p>
+            <p id="viewStudentDept" style="font-size: 13px; color: var(--text-muted); margin: 0;">-</p>
+          </div>
+        </div>
+        <div style="background-color: var(--bg-canvas); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-default); font-size: 13px; line-height: 1.6;">
+          <div><strong>Year &amp; Section:</strong> <span id="viewStudentYearSection">-</span></div>
+          <div><strong>Enrollment Date:</strong> <span id="viewStudentCreated">-</span></div>
+          <div><strong>Biometric Status:</strong> <span class="status-badge good" style="margin-left: 4px;">128-d Vector Enrolled</span></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalViewStudent')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Main Logic Script -->
+  <script src="/script.js"></script>
+</body>
+</html>
