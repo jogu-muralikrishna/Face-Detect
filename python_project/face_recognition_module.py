@@ -10,20 +10,17 @@ import json
 import base64
 import numpy as np
 
-# Import database module safely
 try:
     import database
 except ImportError:
     from python_project import database
 
-# Try importing cv2 safely
 try:
     import cv2
 except Exception as e:
     print(f"[Warning] OpenCV cv2 not available: {e}")
     cv2 = None
 
-# Try importing face_recognition library safely
 try:
     import face_recognition
 except Exception as e:
@@ -54,7 +51,6 @@ def extract_face_encoding_from_base64(base64_str, descriptor=None):
         return np.array(descriptor, dtype=float), None
 
     if face_recognition is None or cv2 is None:
-        # If native libraries are absent, but base64 image exists, generate deterministic hash vector as fallback
         if base64_str:
             np.random.seed(abs(hash(base64_str[:100])) % (2**32))
             return np.random.rand(128).astype(float), None
