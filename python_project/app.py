@@ -94,15 +94,33 @@ def serve_style():
     return send_from_directory(PUBLIC_DIR, "style.css")
 
 
-@app.route("/public/<path:filename>")
-def serve_public_files(filename):
-    return send_from_directory(PUBLIC_DIR, filename)
+@app.route("/js/<path:filename>")
+def serve_js_files(filename):
+    js_dir = os.path.join(PUBLIC_DIR, "js")
+    return send_from_directory(js_dir, filename)
 
 
 @app.route("/models/<path:filename>")
 def serve_models_files(filename):
     models_dir = os.path.join(PUBLIC_DIR, "models")
     return send_from_directory(models_dir, filename)
+
+
+@app.route("/images/<path:filename>")
+def serve_images_files(filename):
+    images_dir = os.path.join(PUBLIC_DIR, "images")
+    return send_from_directory(images_dir, filename)
+
+
+@app.route("/uploads/<path:filename>")
+def serve_uploads_files(filename):
+    uploads_dir = os.path.join(PUBLIC_DIR, "uploads")
+    return send_from_directory(uploads_dir, filename)
+
+
+@app.route("/public/<path:filename>")
+def serve_public_files(filename):
+    return send_from_directory(PUBLIC_DIR, filename)
 
 
 @app.route("/students/<path:filename>")
