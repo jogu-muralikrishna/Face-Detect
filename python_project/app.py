@@ -89,35 +89,43 @@ def verify_admin_token(req):
 @app.route("/register_faculty")
 @app.route("/admin")
 def serve_index():
-    return send_from_directory(BASE_DIR, "index.html")
+    if os.path.exists(os.path.join(PUBLIC_DIR, "index.html")):
+        return send_from_directory(PUBLIC_DIR, "index.html", mimetype="text/html")
+    return send_from_directory(BASE_DIR, "index.html", mimetype="text/html")
 
 
 # ---------------------------------------------------------------------------
-# Static File Routing Fallback
+# Static File Routing Fallback with Explicit MIME Types
 # ---------------------------------------------------------------------------
 @app.route("/style.css")
 def serve_style():
-    return send_from_directory(PUBLIC_DIR, "style.css")
+    target_dir = PUBLIC_DIR if os.path.exists(os.path.join(PUBLIC_DIR, "style.css")) else BASE_DIR
+    return send_from_directory(target_dir, "style.css", mimetype="text/css")
 
 
 @app.route("/script.js")
 def serve_script():
-    return send_from_directory(PUBLIC_DIR, "script.js")
+    target_dir = PUBLIC_DIR if os.path.exists(os.path.join(PUBLIC_DIR, "script.js")) else BASE_DIR
+    return send_from_directory(target_dir, "script.js", mimetype="application/javascript")
 
 
 @app.route("/js/<path:filename>")
 def serve_js(filename):
-    return send_from_directory(os.path.join(PUBLIC_DIR, "js"), filename)
+    target_dir = os.path.join(PUBLIC_DIR, "js") if os.path.exists(os.path.join(PUBLIC_DIR, "js")) else os.path.join(BASE_DIR, "js")
+    return send_from_directory(target_dir, filename, mimetype="application/javascript")
 
 
 @app.route("/models/<path:filename>")
 def serve_models(filename):
-    return send_from_directory(os.path.join(PUBLIC_DIR, "models"), filename)
+    target_dir = os.path.join(PUBLIC_DIR, "models") if os.path.exists(os.path.join(PUBLIC_DIR, "models")) else os.path.join(BASE_DIR, "models")
+    return send_from_directory(target_dir, filename)
 
 
 @app.route("/images/<path:filename>")
 def serve_images(filename):
-    return send_from_directory(os.path.join(PUBLIC_DIR, "images"), filename)
+    target_dir = os.path.join(PUBLIC_DIR, "images") if os.path.exists(os.path.join(PUBLIC_DIR, "images")) else os.path.join(BASE_DIR, "images")
+    return send_from_directory(target_dir, filename)
+
 
 
 @app.route("/students/<path:filename>")
